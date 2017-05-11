@@ -178,6 +178,15 @@ LDFLAGS = $(MCFLAGS) -mthumb --specs=nano.specs -Wl,--gc-sections -nostartfiles 
 #LDFLAGS = $(MCFLAGS) -mthumb -T$(LDSCRIPT) -Wl,-Map=$(FULL_PRJ).map,--cref,--no-warn-mismatch $(LIBDIR)
 
 #
+# OPENOCD Command Options
+#
+OCDCMN = "program $(FULL_PRJ).bin verify reset exit"
+# OCDCMN += -c flash probe 0
+# OCDCMN += -c stm32f1x mass_erase 0
+# OCDCMN += -c flash write_bank 0 main.bin 0
+# OCDCMN += -c reset run
+
+#
 # makefile rules
 #
 
@@ -205,6 +214,10 @@ $(assobjects): %.o: %.s
 
 %bin: %elf
 	$(BIN)  $< $@
+
+flash:
+	sudo openocd -f stm32f0discovery.cfg -c $(OCDCMN)
+	#sudo openocd -f stm32f0discovery.cfg
 
 clean:
 	rm $(OBJS)
