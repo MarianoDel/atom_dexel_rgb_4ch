@@ -135,8 +135,8 @@ void GPIO_Config (void)
 		GPIOB_CLK_ON;
 
 	temp = GPIOB->MODER;	//2 bits por pin
-	temp &= 0xFFFFCFF0;		//PB0 PB1 (alternative) PB6
-	temp |= 0x0000100A;
+	temp &= 0xFFFFC330;		//PB0 PB1 PB3 PB5 (alternative) PB6 out
+	temp |= 0x0000188A;
 	GPIOB->MODER = temp;
 
 	temp = GPIOB->OTYPER;	//1 bit por pin
