@@ -14,10 +14,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f0x_tim.h"
-#include "stm32f0xx_tim.h"
-#include "stm32f0xx_misc.h"
-#include "stm32f0x_uart.h"
+#include "tim.h"
 #include "hard.h"
 
 //--- VARIABLES EXTERNAS ---//
@@ -190,77 +187,75 @@ void TIM_14_Init (void)
 	TIM14->EGR |= 0x0001;
 }
 
-void TIM16_IRQHandler (void)	//100uS
-{
-
-	if (TIM16->SR & 0x01)
-		//bajar flag
-		TIM16->SR = 0x00;
-}
-
-
-void TIM_16_Init (void)
-{
-
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	if (!RCC_TIM16_CLK)
-		RCC_TIM16_CLK_ON;
-
-	//Configuracion del timer.
-	TIM16->ARR = 2000; //10m
-	TIM16->CNT = 0;
-	TIM16->PSC = 479;
-	TIM16->EGR = TIM_EGR_UG;
-
-	// Enable timer ver UDIS
-	TIM16->DIER |= TIM_DIER_UIE;
-	TIM16->CR1 |= TIM_CR1_CEN;
-
-	NVIC_InitStructure.NVIC_IRQChannel = TIM16_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPriority = 5;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
-
-void TIM17_IRQHandler (void)	//100uS
-{
-
-	//if (GPIOA_PIN0_OUT)
-	//	GPIOA_PIN0_OFF;
-	//else
-	//	GPIOA_PIN0_ON;
-
-	if (TIM17->SR & 0x01)
-		//bajar flag
-		TIM17->SR = 0x00;
-}
-
-
-void TIM_17_Init (void)
-{
-
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	if (!RCC_TIM17_CLK)
-		RCC_TIM17_CLK_ON;
-
-	//Configuracion del timer.
-	TIM17->ARR = 2000; //10m
-	TIM17->CNT = 0;
-	TIM17->PSC = 479;
-	TIM17->EGR = TIM_EGR_UG;
-
-	// Enable timer ver UDIS
-	TIM17->DIER |= TIM_DIER_UIE;
-	TIM17->CR1 |= TIM_CR1_CEN;
-
-	NVIC_InitStructure.NVIC_IRQChannel = TIM17_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPriority = 5;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
+// void TIM16_IRQHandler (void)	//100uS
+// {
+//
+// 	if (TIM16->SR & 0x01)
+// 		//bajar flag
+// 		TIM16->SR = 0x00;
+// }
+//
+//
+// void TIM_16_Init (void)
+// {
+//
+// 	NVIC_InitTypeDef NVIC_InitStructure;
+//
+// 	if (!RCC_TIM16_CLK)
+// 		RCC_TIM16_CLK_ON;
+//
+// 	//Configuracion del timer.
+// 	TIM16->ARR = 2000; //10m
+// 	TIM16->CNT = 0;
+// 	TIM16->PSC = 479;
+// 	TIM16->EGR = TIM_EGR_UG;
+//
+// 	// Enable timer ver UDIS
+// 	TIM16->DIER |= TIM_DIER_UIE;
+// 	TIM16->CR1 |= TIM_CR1_CEN;
+//
+// 	NVIC_InitStructure.NVIC_IRQChannel = TIM16_IRQn;
+// 	NVIC_InitStructure.NVIC_IRQChannelPriority = 5;
+// 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+// 	NVIC_Init(&NVIC_InitStructure);
+// }
+//
+// void TIM17_IRQHandler (void)	//100uS
+// {
+//
+// 	//if (GPIOA_PIN0_OUT)
+// 	//	GPIOA_PIN0_OFF;
+// 	//else
+// 	//	GPIOA_PIN0_ON;
+//
+// 	if (TIM17->SR & 0x01)
+// 		//bajar flag
+// 		TIM17->SR = 0x00;
+// }
+//
+//
+// void TIM_17_Init (void)
+// {
+//
+// 	NVIC_InitTypeDef NVIC_InitStructure;
+//
+// 	if (!RCC_TIM17_CLK)
+// 		RCC_TIM17_CLK_ON;
+//
+// 	//Configuracion del timer.
+// 	TIM17->ARR = 2000; //10m
+// 	TIM17->CNT = 0;
+// 	TIM17->PSC = 479;
+// 	TIM17->EGR = TIM_EGR_UG;
+//
+// 	// Enable timer ver UDIS
+// 	TIM17->DIER |= TIM_DIER_UIE;
+// 	TIM17->CR1 |= TIM_CR1_CEN;
+//
+// 	NVIC_InitStructure.NVIC_IRQChannel = TIM17_IRQn;
+// 	NVIC_InitStructure.NVIC_IRQChannelPriority = 5;
+// 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+// 	NVIC_Init(&NVIC_InitStructure);
+// }
 
 //--- end of file ---//
-
-

@@ -4,24 +4,7 @@
 //#include "main.h"
 //typedef unsigned int uint32_t;
 #include <stdint.h>
-
-#define INFO_IN_SST
-//#define INFO_IN_FLASH
-
-#ifdef INFO_IN_SST
-#define CONFIGURATION_IN_SST
-#define CODES_IN_SST
-#define OFFSET_FILESYSTEM	0x0000
-#define OFFSET_CONFIGURATION	0x1000
-#define OFFSET_FIRST_FILE	0x6000
-#endif
-
-#ifdef INFO_IN_FLASH
-#define CONFIGURATION_IN_FLASH
-#define CODES_IN_FLASH
-#define OFFSET_FILESYSTEM	0x0000
-#define FUNC_MEM
-#endif
+#include "stm32f0xx.h"
 
 // Define the STM32F10x FLASH Page Size depending on the used STM32 device
 // si es mayor a 128K la pagina es de 2KB, sino 1KB
@@ -107,25 +90,44 @@ typedef struct filesystem {
 
 typedef enum {FAILED = 0, PASSED = !FAILED} TestStatus;
 
-//-------- Functions -------------
-unsigned char ReadMem (void);
+typedef enum
+{
+  FLASH_BUSY = 1,
+  FLASH_ERROR_WRP,
+  FLASH_ERROR_PROGRAM,
+  FLASH_COMPLETE,
+  FLASH_TIMEOUT
+}FLASH_Status;
 
-unsigned char EraseAllMemory_FLASH(void);
-void BackupPage(unsigned int *, unsigned int *);
-void ErasePage(uint32_t , unsigned char );
-unsigned char UpdateNewCode(unsigned int *, unsigned short, unsigned int);
-unsigned char WritePage(unsigned int *, uint32_t, unsigned char);
-unsigned char Write_Code_To_Memory_FLASH(unsigned short, unsigned int);
+#define FLASH_ER_PRG_TIMEOUT         ((uint32_t)0x000B0000)
+#define FLASH_FLAG_BSY                 FLASH_SR_BSY     /*!< FLASH Busy flag */
+#define FLASH_FLAG_WRPERR              FLASH_SR_WRPERR  /*!< FLASH Write protected error flag */
+
+//-------- Exported Functions -------------
 unsigned char WriteConfigurations (void);
-void LoadFilesIndex (void);
-void UpdateFileIndex (unsigned char, unsigned int, unsigned int);
-void SaveFilesIndex (void);
-void Load16SamplesShort (unsigned short *, unsigned int);
-void Load16SamplesChar (unsigned char *, unsigned int);
-void ShowFileSystem(void);
-void LoadConfiguration (void);
-void ShowConfiguration (void);
-
 unsigned char WriteFlash(unsigned int * p, uint32_t p_addr, unsigned char with_lock, unsigned char len_in_4);
+
+//-------- Private functions --------------
+// void ErasePage(uint32_t , unsigned char );
+//
+//
+// unsigned char ReadMem (void);
+// unsigned char EraseAllMemory_FLASH(void);
+// void BackupPage(unsigned int *, unsigned int *);
+// void ErasePage(uint32_t , unsigned char );
+// unsigned char UpdateNewCode(unsigned int *, unsigned short, unsigned int);
+// unsigned char WritePage(unsigned int *, uint32_t, unsigned char);
+// unsigned char Write_Code_To_Memory_FLASH(unsigned short, unsigned int);
+//
+// void LoadFilesIndex (void);
+// void UpdateFileIndex (unsigned char, unsigned int, unsigned int);
+// void SaveFilesIndex (void);
+// void Load16SamplesShort (unsigned short *, unsigned int);
+// void Load16SamplesChar (unsigned char *, unsigned int);
+// void ShowFileSystem(void);
+// void LoadConfiguration (void);
+// void ShowConfiguration (void);
+
+
 
 #endif

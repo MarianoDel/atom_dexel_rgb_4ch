@@ -25,6 +25,8 @@
 #include "flash_program.h"
 #include "programs_functions.h"
 
+#include "tim.h"
+
 //#include <stdio.h>
 //#include <string.h>
 
@@ -195,10 +197,8 @@ int main(void)
 	GPIO_Config();
 
 	//TIM Configuration.
-	Timer_1_Init();
-	Timer_2_Init();
-	//Timer_3_Init();
-	//Timer_4_Init();
+	TIM_3_Init();
+	TIM_14_Init();
 
 	//ACTIVAR SYSTICK TIMER
 	 if (SysTick_Config(48000))

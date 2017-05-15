@@ -8,7 +8,7 @@
 #ifndef PROGRAMS_FUNCTIONS_H_
 #define PROGRAMS_FUNCTIONS_H_
 
-#include "stm32f0x_tim.h"
+#include "tim.h"
 
 
 //-------- Defines -------------
