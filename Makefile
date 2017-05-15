@@ -103,11 +103,11 @@ SRC += $(STMSPSRCDDIR)/stm32f0xx_tim.c
 SRC += $(STMSPSRCDDIR)/stm32f0xx_usart.c
 #SRC += $(STMSPSRCDDIR)/stm32f0xx_wwdg.c
 SRC += ./src/stm32f0xx_it.c
-SRC += ./src/stm32f0x_gpio.c
+SRC += ./src/gpio.c
 SRC += ./src/stm32f0x_tim.c
 SRC += ./src/spi.c
 SRC += ./src/adc.c
-SRC += ./src/stm32f0x_uart.c
+SRC += ./src/uart.c
 SRC += ./src/flash_program.c
 SRC += ./src/programs_functions.c
 ## System Support
@@ -225,14 +225,14 @@ reset:
 	sudo openocd -f stm32f0_reset.cfg
 
 clean:
-	rm $(OBJS)
-	rm $(FULL_PRJ).elf
-	rm $(FULL_PRJ).map
-	rm $(FULL_PRJ).hex
-	rm $(FULL_PRJ).bin
+	rm -f $(OBJS)
+	rm -f $(FULL_PRJ).elf
+	rm -f $(FULL_PRJ).map
+	rm -f $(FULL_PRJ).hex
+	rm -f $(FULL_PRJ).bin
 #	rm $(SRC:.c=.c.bak)
-	rm $(SRC:.c=.lst)
+	rm -f $(SRC:.c=.lst)
 #   rm $(ASRC:.s=.s.bak)
-	rm $(ASRC:.s=.lst)
+	rm -f $(ASRC:.s=.lst)
 
 # *** EOF ***

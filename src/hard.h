@@ -8,6 +8,8 @@
 #ifndef HARD_H_
 #define HARD_H_
 
+#include "stm32f0xx.h"
+#include "stm32f0xx_adc.h"		//TODO: quitar luego
 
 //-- Defines For Configuration -------------------
 //---- Configuration for Hardware Versions -------

@@ -15,7 +15,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "hard.h"
-#include "main.h"
+#include "stm32f0xx.h"
+#include "gpio.h"
+#include "uart.h"
 #include "spi.h"
 
 #include "core_cm0.h"
@@ -239,7 +241,7 @@ int main(void)
 	 Packet_Detected_Flag = 0;
 	 DMX_channel_selected = 1;
 	 DMX_channel_quantity = 4;
-	 USART_Config();
+	 USART1Config();
 	 //DMX_Disa();
 
 	 //PRUEBA DISPLAY
@@ -1818,16 +1820,16 @@ unsigned char CheckS2 (void)
 
 void DMX_Ena(void)
 {
-	//habilito la interrupci�n
+	//habilito la interrupcion
 	EXTIOn ();
-	USART_Cmd(USARTx, ENABLE);
+	USART1_RX_ENA;
 }
 
 void DMX_Disa(void)
 {
-	//deshabilito la interrupci�n
+	//deshabilito la interrupcion
 	EXTIOff ();
-	USART_Cmd(USARTx, DISABLE);
+	USART1_RX_DISA;
 }
 
 void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHILIPS
