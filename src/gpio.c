@@ -75,8 +75,8 @@ void GPIO_Config (void)
 
 #ifdef VER_1_0
 	temp = GPIOA->MODER;	//2 bits por pin
-	temp &= 0xFC3C0000;		//PA0 (analog input) PA2 PA3 PA8 entradas salidas PA1 a PA6 PA7(alternative) PA11 PA12
-	temp |= 0x0140A507;
+	temp &= 0xFC0C0000;		//PA0 (analog input); PA1 output; PA2 PA3 input; PA4 PA5 output; PA6 PA7(alternative)
+	temp |= 0x0160A507;		//PA8 input; PA10 alternative;  PA11 PA12 output
 	//temp |= 0x0140A504;
 	GPIOA->MODER = temp;
 
@@ -99,8 +99,8 @@ void GPIO_Config (void)
 
 #if ((defined VER_1_1) || (defined VER_1_2))
 	temp = GPIOA->MODER;	//2 bits por pin
-	temp &= 0xFC3C0000;		//PA0 (analog input); PA1 salida; PA2 PA3 input; PA4 PA5 out; PA6 PA7 (alternative); PA11 PA12 out
-	temp |= 0x0140A507;
+	temp &= 0xFC0C0000;		//PA0 (analog input); PA1 output; PA2 PA3 input; PA4 PA5 output; PA6 PA7(alternative)
+	temp |= 0x0160A507;		//PA8 input; PA10 alternative;  PA11 PA12 output
 	//temp |= 0x0140A504;
 	GPIOA->MODER = temp;
 

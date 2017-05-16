@@ -242,7 +242,13 @@ int main(void)
 	 DMX_channel_selected = 1;
 	 DMX_channel_quantity = 4;
 	 USART1Config();
-	 //DMX_Disa();
+
+	 //EXTIOff ();
+	 DMX_Disa();
+	 //
+	 while (1) {
+	 	/* code */
+	 }
 
 	 //PRUEBA DISPLAY
 	 /*
@@ -523,10 +529,10 @@ int main(void)
 
 
 	 //--- COMIENZO PROGRAMA DE PRODUCCION
-		RED_PWM (0);
-		GREEN_PWM (0);
-		BLUE_PWM (0);
-		WHITE_PWM (0);
+	 RED_PWM (0);
+	 GREEN_PWM (0);
+	 BLUE_PWM (0);
+	 WHITE_PWM (0);
 
 	 //inicio cuestiones particulares
 	 //iniciar variables de usao del programa segun funcion de memoria
@@ -1836,7 +1842,6 @@ void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHI
 {
 	unsigned short aux;
 
-
 	if(EXTI->PR & 0x0100)	//Line8
 	{
 		//si no esta con el USART detecta el flanco	PONER TIMEOUT ACA?????
@@ -1867,18 +1872,10 @@ void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHI
 						//if ((aux > 87) && (aux < 2000))		//Consola marca CODE tiene break 1.88ms
 						if ((aux > 87) && (aux < 4600))		//Consola marca CODE modelo A24 tiene break 4.48ms fecha 11-04-17
 						{
-							LED_ON;
-							//Activo timer para ver MARK.
-							//TIM2->CNT = 0;
-							//TIM2->CR1 |= 0x0001;
-
+							//LED_ON;		//TODO: apaga para pruebas
 							signal_state++;
-							//tengo el break, activo el puerto serie
 							DMX_channel_received = 0;
-							//dmx_receive_flag = 1;
-
-							dmx_timeout_timer = DMX_TIMEOUT;		//activo el timer cuando prendo el puerto serie
-							//USARTx_RX_ENA;
+							dmx_timeout_timer = DMX_TIMEOUT;		//activo el timeout para esperar un MARK valido
 						}
 						else	//falso disparo
 							signal_state = IDLE;
@@ -1893,17 +1890,15 @@ void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHI
 					if ((!(DMX_INPUT)) && (dmx_timeout_timer))	//termino Mark after break
 					{
 						//ya tenia el serie habilitado
-						//if ((aux > 7) && (aux < 12))
 						dmx_receive_flag = 1;
 					}
 					else	//falso disparo
 					{
 						//termine por timeout
 						dmx_receive_flag = 0;
-						//USARTx_RX_DISA;
 					}
 					signal_state = IDLE;
-					LED_OFF;
+					//LED_OFF;						//TODO: apaga para pruebas
 					break;
 
 				default:
@@ -1911,7 +1906,6 @@ void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHI
 					break;
 			}
 		}
-
 		EXTI->PR |= 0x0100;
 	}
 }

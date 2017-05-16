@@ -38,12 +38,12 @@
 #define USART_250000		192
 
 #ifdef USE_USART1
-#define USART1_RX_ENA	USART1->CR1 &= 0xfffffffb
-#define USART1_RX_DISA	USART1->CR1 |= 0x04
+#define USART1_RX_DISA	USART1->CR1 &= 0xfffffffb
+#define USART1_RX_ENA	USART1->CR1 |= 0x04
 #endif
 #ifdef USE_USART2
-#define USART2_RX_ENA	USART2->CR1 &= 0xfffffffb
-#define USART2_RX_DISA	USART2->CR1 |= 0x04
+#define USART2_RX_DISA	USART2->CR1 &= 0xfffffffb
+#define USART2_RX_ENA	USART2->CR1 |= 0x04
 #endif
 
 //--- Exported functions ---//

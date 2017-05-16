@@ -91,6 +91,9 @@ void USART1Config(void)
 //	USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_UE;	//SIN TX
 	USART1->CR1 = USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;	//para pruebas TX
 
+	//habilito el pin
+	GPIOA->AFR[1] = 0x00000100;	//PA10 -> AF1
+
 	NVIC_EnableIRQ(USART1_IRQn);
 	NVIC_SetPriority(USART1_IRQn, 5);
 }
@@ -100,6 +103,11 @@ void USART1_IRQHandler(void)
 	unsigned short i;
 	unsigned char dummy;
 
+	if (LED)
+		LED_OFF;
+	else
+		LED_ON;
+
 	/* USART in mode Receiver --------------------------------------------------*/
 	if (USART1->ISR & USART_ISR_RXNE)
 	{
@@ -107,8 +115,8 @@ void USART1_IRQHandler(void)
 
 		if (dmx_receive_flag)
 		{
-			if (DMX_channel_received == 0)		//empieza paquete
-				LED_ON;
+			// if (DMX_channel_received == 0)		//empieza paquete
+			// 	LED_ON;										//TODO: apaga para pruebas
 
 			data1[DMX_channel_received] = dummy;
 			if (DMX_channel_received < 511)
@@ -131,7 +139,7 @@ void USART1_IRQHandler(void)
 				//USARTx_RX_DISA;
 				dmx_receive_flag = 0;
 				Packet_Detected_Flag = 1;
-				LED_OFF;	//termina paquete
+//				LED_OFF;	//termina paquete			//TODO: apaga para pruebas
 			}
 #else
 			if (DMX_channel_received >= (DMX_channel_selected + DMX_channel_quantity))
@@ -147,7 +155,7 @@ void USART1_IRQHandler(void)
 				//USARTx_RX_DISA;
 				dmx_receive_flag = 0;
 				Packet_Detected_Flag = 1;
-				LED_OFF;	//termina paquete
+//				LED_OFF;	//termina paquete			//TODO: apaga para pruebas
 			}
 #endif
 		}
