@@ -243,14 +243,10 @@ int main(void)
 	 DMX_channel_quantity = 4;
 	 USART1Config();
 
-	 //EXTIOff ();
+	 //arranco con todo apagado
 	 DMX_Disa();
-	 //
-	 while (1) {
-	 	/* code */
-	 }
 
-	 //PRUEBA DISPLAY
+ 	//PRUEBA DISPLAY
 	 /*
 	 PWR_DS1_OFF;
 	 PWR_DS2_OFF;
@@ -589,7 +585,7 @@ int main(void)
 	timer_standby = 1000;
 	ds1_number = DISPLAY_S;				//Software
 	ds2_number = DISPLAY_1P;			//1.
-	ds3_number = 6;						//6
+	ds3_number = 7;						//7
 	while (timer_standby)
 		UpdateDisplay();
 
@@ -730,7 +726,7 @@ int main(void)
 				{
 					FromChannelToDs(last_channel);		//muestro el ultimo canal DMX seleccionado
 					DMX_channel_selected = last_channel;
-					//DMX_Ena();
+					DMX_Ena();
 					main_state = MAIN_DMX_NORMAL;
 					timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
 				}
