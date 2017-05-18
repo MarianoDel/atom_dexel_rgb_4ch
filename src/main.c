@@ -535,18 +535,7 @@ int main(void)
 
 	//ADC configuration.
 
-	if (ADC_Conf() == 0)
-	{
-		while (1)
-		{
-			if (LED)
-				LED_OFF;
-			else
-				LED_ON;
-
-			Wait_ms(150);
-		}
-	}
+	AdcConfig();
 
 	LED_ON;
 	Wait_ms(300);
