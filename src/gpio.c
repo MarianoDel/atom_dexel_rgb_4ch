@@ -15,9 +15,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "gpio.h"
-#include "stm32f0xx_misc.h"
-#include "stm32f0xx_exti.h"
-
+#include "stm32f0xx.h"
 #include "hard.h"
 
 
@@ -37,9 +35,6 @@
 void GPIO_Config (void)
 {
 	unsigned long temp;
-	EXTI_InitTypeDef EXTI_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
-
 
 	//--- MODER ---//
 	//00: Input mode (reset state)
@@ -186,31 +181,21 @@ void GPIO_Config (void)
 
 #endif
 
-	//EXTI_InitStructure.EXTI_Line = EXTI_Line0;
-	//EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	//EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-	//EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	//EXTI_Init(&EXTI_InitStructure);
-	EXTI_InitStructure.EXTI_Line = EXTI_Line8;
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
+#ifdef WITH_EXTI
+		//Interrupt en PA8
+		if (!SYSCFG_CLK)
+			SYSCFG_CLK_ON;
 
-		//GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource12);
+		SYSCFG->EXTICR[0] = 0x00000000; //Select Port A
+		SYSCFG->EXTICR[1] = 0x00000000; //Select Port A
+		EXTI->IMR |= 0x0100; 			//Corresponding mask bit for interrupts PA8
+		EXTI->EMR |= 0x0000; 			//Corresponding mask bit for events
+		EXTI->RTSR |= 0x0100; 			//Pin Interrupt line on rising edge PA8
+		EXTI->FTSR |= 0x0100; 			//Pin Interrupt line on falling edge PA8
 
-	/* Enable and set Button EXTI Interrupt to the lowest priority */
-	//NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
-	//NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
-	//NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
-	//NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPriority = 0x0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-	NVIC_Init(&NVIC_InitStructure);
-
+		NVIC_EnableIRQ(EXTI4_15_IRQn);
+		NVIC_SetPriority(EXTI4_15_IRQn, 2);
+#endif
 }
 
 inline void EXTIOff (void)

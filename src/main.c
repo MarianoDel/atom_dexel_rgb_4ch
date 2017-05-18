@@ -121,7 +121,7 @@ unsigned char vd4 [LARGO_F + 1];
 
 //--- FUNCIONES DEL MODULO ---//
 void Delay(__IO uint32_t nTime);
-extern void TimingDelay_Decrement(void);
+void TimingDelay_Decrement(void);
 
 
 unsigned char Door_Open (void);

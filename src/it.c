@@ -28,16 +28,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f0xx_it.h"
-//#include "main.h"
-
-/** @addtogroup STM32F0xx_StdPeriph_Examples
-  * @{
-  */
-
-/** @addtogroup GPIO_IOToggle
-  * @{
-  */
+#include "it.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -45,6 +36,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+extern void TimingDelay_Decrement(void);
 
 /******************************************************************************/
 /*            Cortex-M0 Processor Exceptions Handlers                         */
