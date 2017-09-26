@@ -124,9 +124,7 @@ void Delay(__IO uint32_t nTime);
 void TimingDelay_Decrement(void);
 
 
-unsigned char Door_Open (void);
 unsigned short Get_Temp (void);
-unsigned short Get_Pote (void);
 void Update_PWM (unsigned short);
 
 // ------- del display -------
@@ -369,44 +367,30 @@ int main(void)
 			*/
 		//--- FIN FAN
 
-	//--- PRUEBA CH0 DMX con switch de display	inicializo mas arriba USART y variables
-	 /*
-	 while (1)
-	 {
-		 if (CheckS1() > S_NO)
-			 sw_state = 1;
-		 else if (CheckS2() > S_NO)
-			 sw_state = 0;
-
-		 if (sw_state)		//si tengo que estar prendido
+		//--- PRUEBA CH0 CH1 CH2 CH3 DMX	inicializo mas arriba USART y variables
+			DMX_Ena();
+		 while (1)
 		 {
-			 if (Packet_Detected_Flag)
-			 {
-				 //llego un paquete DMX
-				 Packet_Detected_Flag = 0;
-				 //en data tengo la info
-				 ShowNumbers (data[0]);
+				 if (Packet_Detected_Flag)
+				 {
 
-				 Update_TIM3_CH1 (data[0]);
-				 Update_TIM3_CH2 (data[1]);
-				 Update_TIM3_CH3 (data[2]);
-				 Update_TIM3_CH4 (data[3]);
+					 //llego un paquete DMX
+					 Packet_Detected_Flag = 0;
+					 //en data tengo la info
+					 ShowNumbers (data[0]);
+					 LED_OFF;
+					 Update_TIM3_CH1 (data[0]);
+					 Update_TIM3_CH2 (data[0]);
+					 Update_TIM3_CH3 (data[0]);
+					 Update_TIM3_CH4 (data[0]);
 
-			 }
+				 }
+
+			 UpdateDisplay ();
+			 UpdateSwitches ();
+
 		 }
-		 else	//apago los numeros
-		 {
-			 ds1_number = 0;
-			 ds2_number = 0;
-			 ds3_number = 0;
-		 }
-
-		 UpdateDisplay ();
-		 UpdateSwitches ();
-
-	 }
-	*/
-	//--- FIN PRUEBA CH0 DMX
+		//--- FIN PRUEBA CH0 CH1 CH2 CH3 DMX
 
 	//--- PRUEBA blinking de display	inicializo mas arriba USART y variables
 	 /*
@@ -543,6 +527,15 @@ int main(void)
 
 //muestro versiones de hardware, software y firmware
 //-- HARDWARE --
+#ifdef VER_1_3
+	timer_standby = 1000;
+	ds1_number = DISPLAY_H;				//Hardware
+	ds2_number = DISPLAY_1P;			//1.
+	ds3_number = 3;						//3
+	while (timer_standby)
+		UpdateDisplay();
+#endif
+
 #ifdef VER_1_2
 	timer_standby = 1000;
 	ds1_number = DISPLAY_H;				//Hardware
@@ -1439,23 +1432,13 @@ unsigned short MAFilter16 (unsigned char new_sample, unsigned char * vsample)
     return total_ma >> DIVISOR_F;
 }
 
-unsigned char Door_Open (void)
-{
-	if (door_filter >= DOOR_THRESH)
-		return 1;
-	else
-		return 0;
-}
-
-
-
 void SendSegment (unsigned char display, unsigned char segment)
 {
 	unsigned char dbkp = 0;
 
 	OE_OFF;
 
-#if ((defined VER_1_1) || (defined VER_1_2))
+#if ((defined VER_1_1) || (defined VER_1_2) || (defined VER_1_3))
 	//PRUEBO desplazando 1 a la izq
 	PWR_DS1_OFF;
 	PWR_DS2_OFF;
@@ -1544,7 +1527,7 @@ unsigned short FromDsToChannel (void)	//en DS 10 es cero; OJO CON 11 es punto; 0
 //DS1 centena
 //DS2 decena
 //DS3 unidades
-void ShowNumbers (unsigned short number)	//del 1 al 9; 10 es cero; 11 es punto; 0, 12, 13, 14, 15 apagar
+void ShowNumbers (unsigned short number)
 {
 	unsigned char a, b;
 
@@ -1563,7 +1546,7 @@ void ShowNumbers (unsigned short number)	//del 1 al 9; 10 es cero; 11 es punto; 
 		ds3_number = 10;
 }
 
-#if ((defined VER_1_1) || (defined VER_1_2))
+#if ((defined VER_1_1) || (defined VER_1_2) || (defined VER_1_3))
 //		dp g f e d c b a
 //bits   7 6 5 4 3 2 1 0
 //sin negar
@@ -1876,6 +1859,7 @@ void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHI
 					{
 						//ya tenia el serie habilitado
 						dmx_receive_flag = 1;
+						LED_ON;
 					}
 					else	//falso disparo
 					{

@@ -103,10 +103,10 @@ void USART1_IRQHandler(void)
 	unsigned short i;
 	unsigned char dummy;
 
-	if (LED)
-		LED_OFF;
-	else
-		LED_ON;
+	// if (LED)
+	// 	LED_OFF;
+	// else
+	// 	LED_ON;
 
 	/* USART in mode Receiver --------------------------------------------------*/
 	if (USART1->ISR & USART_ISR_RXNE)
