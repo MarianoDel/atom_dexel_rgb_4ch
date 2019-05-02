@@ -109,11 +109,11 @@ void TIM_3_Init (void)
 	TIM3->CCER |= TIM_CCER_CC4E | TIM_CCER_CC4P | TIM_CCER_CC3E | TIM_CCER_CC3P | TIM_CCER_CC2E | TIM_CCER_CC2P | TIM_CCER_CC1E | TIM_CCER_CC1P;	//CH4 CH3 CH2 y CH1 enable on pin
 #endif
 
+
 	TIM3->ARR = 255;
-	//TIM3->ARR = 1023;		//para prbar parte baja de placa mosfet (comparar con placa china)
 	TIM3->CNT = 0;
-	//TIM3->PSC = 0;
 	TIM3->PSC = 11;		//original
+	
 	//TIM3->PSC = 1119;		//para pruebas
 	//TIM3->EGR = TIM_EGR_UG;
 

@@ -244,6 +244,7 @@ int main(void)
 	 //arranco con todo apagado
 	 DMX_Disa();
 
+
  	//PRUEBA DISPLAY
 	 /*
 	 PWR_DS1_OFF;
@@ -368,28 +369,28 @@ int main(void)
 		//--- FIN FAN
 
 		//--- PRUEBA CH0 CH1 CH2 CH3 DMX	inicializo mas arriba USART y variables
-			DMX_Ena();
-		 while (1)
-		 {
-				 if (Packet_Detected_Flag)
-				 {
-
-					 //llego un paquete DMX
-					 Packet_Detected_Flag = 0;
-					 //en data tengo la info
-					 ShowNumbers (data[0]);
-					 LED_OFF;
-					 Update_TIM3_CH1 (data[0]);
-					 Update_TIM3_CH2 (data[0]);
-					 Update_TIM3_CH3 (data[0]);
-					 Update_TIM3_CH4 (data[0]);
-
-				 }
-
-			 UpdateDisplay ();
-			 UpdateSwitches ();
-
-		 }
+		// 	DMX_Ena();
+		//  while (1)
+		//  {
+		// 		 if (Packet_Detected_Flag)
+		// 		 {
+		 //
+		// 			 //llego un paquete DMX
+		// 			 Packet_Detected_Flag = 0;
+		// 			 //en data tengo la info
+		// 			 ShowNumbers (data[0]);
+		// 			 LED_OFF;
+		// 			 Update_TIM3_CH1 (data[0]);
+		// 			 Update_TIM3_CH2 (data[0]);
+		// 			 Update_TIM3_CH3 (data[0]);
+		// 			 Update_TIM3_CH4 (data[0]);
+		 //
+		// 		 }
+		 //
+		// 	 UpdateDisplay ();
+		// 	 UpdateSwitches ();
+		 //
+		//  }
 		//--- FIN PRUEBA CH0 CH1 CH2 CH3 DMX
 
 	//--- PRUEBA blinking de display	inicializo mas arriba USART y variables
