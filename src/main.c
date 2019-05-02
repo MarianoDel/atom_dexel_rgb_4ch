@@ -637,7 +637,7 @@ int main(void)
 		{
 			case MAIN_INIT:
 				//cargo las variables desde la memoria
-				p_mem_init = (unsigned int *) PAGE31;
+                            p_mem_init = (parameters_typedef *) (unsigned int *) PAGE31;
 #ifdef RGB_FOR_PROGRAMS
 				param_struct.last_function_in_flash = p_mem_init->last_function_in_flash;
 				param_struct.last_program_in_flash = p_mem_init->last_program_in_flash;
@@ -1385,7 +1385,7 @@ unsigned short Get_Temp (void)
 	//Kernel mejorado ver 2
 	//si el vector es de 0 a 7 (+1) sumo todas las posiciones entre 1 y 8, acomodo el nuevo vector entre 0 y 7
 	total_ma = 0;
-	vtemp[LARGO_FILTRO] = ReadADC1 (CH_IN_TEMP);
+	vtemp[LARGO_FILTRO] = ReadADC1_SameSampleTime (CH_IN_TEMP);
     for (j = 0; j < (LARGO_FILTRO); j++)
     {
     	total_ma += vtemp[j + 1];
