@@ -90,6 +90,7 @@ SRC += ./src/adc.c
 SRC += ./src/uart.c
 SRC += ./src/flash_program.c
 SRC += ./src/programs_functions.c
+SRC += ./src/hard.c
 
 ## Core Support
 SRC += $(CORELIBDIR)/core_cm0.c

@@ -1,10 +1,12 @@
-/*
- * programs_functions.c
- *
- *  Created on: 17/05/2015
- *      Author: Mariano
- */
-
+//------------------------------------------------
+// #### PROYECTO DEXEL 4CH #######################
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ##
+// #### PROGRAM_FUNCTIONS.C ######################
+//------------------------------------------------
 #include "programs_functions.h"
 #include "hard.h"
 

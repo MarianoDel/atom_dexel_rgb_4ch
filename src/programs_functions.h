@@ -1,12 +1,14 @@
-/*
- * programs_functions.h
- *
- *  Created on: 17/05/2015
- *      Author: Mariano
- */
-
-#ifndef PROGRAMS_FUNCTIONS_H_
-#define PROGRAMS_FUNCTIONS_H_
+//------------------------------------------------
+// #### PROYECTO DEXEL 4CH #######################
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ##
+// #### PROGRAM_FUNCTIONS.C ######################
+//------------------------------------------------
+#ifndef _PROGRAMS_FUNCTIONS_H_
+#define _PROGRAMS_FUNCTIONS_H_
 
 #include "tim.h"
 
@@ -79,4 +81,4 @@ void Func_For_Cat(unsigned char, unsigned char);
 void ResetLastValues(void);
 //void Func_For_Cat(unsigned char, unsigned char, unsigned char, unsigned char);
 
-#endif /* PROGRAMS_FUNCTIONS_H_ */
+#endif /* _PROGRAMS_FUNCTIONS_H_ */

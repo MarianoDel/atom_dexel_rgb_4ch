@@ -1,15 +1,17 @@
-/*
- * hard.h
- *
- *  Created on: 28/11/2013
- *      Author: Mariano
- */
-
-#ifndef HARD_H_
-#define HARD_H_
+//---------------------------------------------
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ## @CPU:    STM32F030
+// ##
+// #### HARD.H ################################
+//---------------------------------------------
+#ifndef _HARD_H_
+#define _HARD_H_
 
 #include "stm32f0xx.h"
-// #include "stm32f0xx_adc.h"		//TODO: quitar luego
+
 
 //-- Defines For Configuration -------------------
 //---- Configuration for Hardware Versions -------
@@ -195,13 +197,21 @@
 #define TIMER_STANDBY_TIMEOUT			6000	//6 segundos
 #define DMX_DISPLAY_SHOW_TIMEOUT		30000	//30 segundos
 
-#define S_FULL		10
-#define S_HALF		3
-#define S_MIN		1
-#define S_NO		0
+typedef enum {
+    S_NO = 0,
+    S_MIN,
+    S_HALF,
+    S_FULL
+
+} switch_state_t;
 
 #define FUNCTION_DMX	1
 #define FUNCTION_MAN	2
 #define FUNCTION_CAT	FUNCTION_MAN
 
-#endif /* HARD_H_ */
+//--- Exported Module Functions ------------
+void UpdateSwitches (void);
+switch_state_t CheckS1 (void);
+switch_state_t CheckS2 (void);
+
+#endif /* _HARD_H_ */

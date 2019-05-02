@@ -1,17 +1,12 @@
-/**
-  ******************************************************************************
-  * @file    Template_2/stm32f0x_tim.c
-  * @author  Nahuel
-  * @version V1.0
-  * @date    22-August-2014
-  * @brief   TIM functions.
-  ******************************************************************************
-  * @attention
-  *
-  * Use this functions to configure timers.
-  *
-  ******************************************************************************
-  */
+//---------------------------------------------
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ## @CPU:    STM32F030
+// ##
+// #### TIM.C ################################
+//---------------------------------------------
 
 /* Includes ------------------------------------------------------------------*/
 #include "tim.h"
@@ -61,77 +56,46 @@ void Wait_ms (unsigned short wait)
 // @param  None
 // @retval None
 //------------------------------------------//
-void TIM3_IRQHandler (void)	//1 ms
-{
-	/*
-	Usart_Time_1ms ();
-
-	if (timer_1seg)
-	{
-		if (timer_1000)
-			timer_1000--;
-		else
-		{
-			timer_1seg--;
-			timer_1000 = 1000;
-		}
-	}
-
-	if (timer_led_comm)
-		timer_led_comm--;
-
-	if (timer_standby)
-		timer_standby--;
-	*/
-	//bajar flag
-	if (TIM3->SR & 0x01)	//bajo el flag
-		TIM3->SR = 0x00;
-}
-
-
 void TIM_3_Init (void)
 {
+    if (!RCC_TIM3_CLK)
+        RCC_TIM3_CLK_ON;
 
-	//NVIC_InitTypeDef NVIC_InitStructure;
-
-	if (!RCC_TIM3_CLK)
-		RCC_TIM3_CLK_ON;
-
-	//Configuracion del timer.
-	TIM3->CR1 = 0x00;		//clk int / 1; upcounting
-	TIM3->CR2 = 0x00;		//igual al reset
-	TIM3->CCMR1 = 0x7070;			//CH2 y CH1 output PWM mode 2
-	TIM3->CCMR2 = 0x7070;			//CH4 y CH3 output PWM mode 2
+    //Configuracion del timer.
+    TIM3->CR1 = 0x00;		//clk int / 1; upcounting
+    TIM3->CR2 = 0x00;		//igual al reset
+    TIM3->CCMR1 = 0x7070;			//CH2 y CH1 output PWM mode 2
+    TIM3->CCMR2 = 0x7070;			//CH4 y CH3 output PWM mode 2
 #ifdef RGB_OUTPUT_LM317
-	TIM3->CCER |= TIM_CCER_CC4E | TIM_CCER_CC3E | TIM_CCER_CC2E | TIM_CCER_CC1E;	//CH4 CH3 CH2 y CH1 enable on pin
+    TIM3->CCER |= TIM_CCER_CC4E | TIM_CCER_CC3E | TIM_CCER_CC2E | TIM_CCER_CC1E;	//CH4 CH3 CH2 y CH1 enable on pin
 #endif
 #if ((defined RGB_OUTPUT_MOSFET_KIRNO) || (defined RGB_OUTPUT_CAT))
-	TIM3->CCER |= TIM_CCER_CC4E | TIM_CCER_CC4P | TIM_CCER_CC3E | TIM_CCER_CC3P | TIM_CCER_CC2E | TIM_CCER_CC2P | TIM_CCER_CC1E | TIM_CCER_CC1P;	//CH4 CH3 CH2 y CH1 enable on pin
+    TIM3->CCER |= TIM_CCER_CC4E | TIM_CCER_CC4P | TIM_CCER_CC3E | TIM_CCER_CC3P | TIM_CCER_CC2E | TIM_CCER_CC2P | TIM_CCER_CC1E | TIM_CCER_CC1P;	//CH4 CH3 CH2 y CH1 enable on pin
 #endif
 
 
-	TIM3->ARR = 255;
-	TIM3->CNT = 0;
-	TIM3->PSC = 11;		//original
+    TIM3->ARR = 255;
+    TIM3->CNT = 0;
+    TIM3->PSC = 11;		//original
 	
-	//TIM3->PSC = 1119;		//para pruebas
-	//TIM3->EGR = TIM_EGR_UG;
+    //TIM3->PSC = 1119;		//para pruebas
+    //TIM3->EGR = TIM_EGR_UG;
 
-	// Enable timer ver UDIS
-	//TIM3->DIER |= TIM_DIER_UIE;
-	TIM3->CR1 |= TIM_CR1_CEN;
+    // Enable timer ver UDIS
+    //TIM3->DIER |= TIM_DIER_UIE;
+    TIM3->CR1 |= TIM_CR1_CEN;
 
-	//Timer sin Int
-	//NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
-	//NVIC_InitStructure.NVIC_IRQChannelPriority = 5;
-	//NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	//NVIC_Init(&NVIC_InitStructure);
+    //Configuracion Pines
+    //Alternate Fuction
+    GPIOA->AFR[0] = 0x11000000;	//PA7 -> AF1; PA6 -> AF1
+    GPIOB->AFR[0] = 0x00000011;	//PB1 -> AF1; PB0 -> AF1
 
-	//Configuracion Pines
-	//Alternate Fuction
-	GPIOA->AFR[0] = 0x11000000;	//PA7 -> AF1; PA6 -> AF1
-	GPIOB->AFR[0] = 0x00000011;	//PB1 -> AF1; PB0 -> AF1
+}
 
+void TIM3_IRQHandler (void)	//1 ms
+{
+    if (TIM3->SR & 0x01)	//bajo el flag
+        TIM3->SR = 0x00;
 }
 
 void TIM_6_Init (void)
@@ -145,15 +109,6 @@ void TIM_6_Init (void)
 	TIM6->ARR = 0xFFFF;			//para que arranque
 	//TIM6->CR1 |= TIM_CR1_CEN;
 }
-
-void TIM14_IRQHandler (void)	//100uS
-{
-
-	if (TIM14->SR & 0x01)
-		//bajar flag
-		TIM14->SR = 0x00;
-}
-
 
 void TIM_14_Init (void)
 {
@@ -186,6 +141,16 @@ void TIM_14_Init (void)
 	TIM14->ARR = 0xFFFF;			//para que arranque
 	TIM14->EGR |= 0x0001;
 }
+
+void TIM14_IRQHandler (void)	//100uS
+{
+
+	if (TIM14->SR & 0x01)
+		//bajar flag
+		TIM14->SR = 0x00;
+}
+
+
 
 // void TIM16_IRQHandler (void)	//100uS
 // {

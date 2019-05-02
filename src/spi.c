@@ -1,29 +1,27 @@
+//---------------------------------------------
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ## @CPU:    STM32F030
+// ##
+// #### SPI.C #################################
+//---------------------------------------------
 #include "spi.h"
 #include "stm32f0xx.h"
 
 
-
-
-
-
-//-------------------------- EXTERNAL VARIABLES ------------------------
+/* Externals ------------------------------------------------------------------*/
 extern volatile unsigned char TxBuffer_SPI [];
 extern volatile unsigned char RxBuffer_SPI [];
 extern volatile unsigned char *pspi_tx;
 extern volatile unsigned char *pspi_rx;
 extern volatile unsigned char spi_bytes_left;
-//extern SPI_InitTypeDef  SPI_InitStructure;
 
-//-------------------------- GLOBAL VARIABLES --------------------------
-//SPI_InitTypeDef  SPI_InitStructure;
+/* Globals --------------------------------------------------------------------*/
 
-//--------------------------- FUNCTIONS --------------------------------
 
-/**
-  * @brief  Configures the SPI Peripheral.
-  * @param  None
-  * @retval None
-  */
+/* Module Functions -----------------------------------------------------------*/
 void SPI_Config(void)
 {
 	//Habilitar Clk
@@ -116,3 +114,5 @@ unsigned char Receive_SPI_Single (void)
 	dummy = (unsigned char) SPIx->DR;
 	return dummy;
 }
+
+//--- end of file ---//

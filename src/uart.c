@@ -1,17 +1,12 @@
-/**
-  ******************************************************************************
-  * @file    Template_2/stm32f0_uart.c
-  * @author  Nahuel
-  * @version V1.0
-  * @date    22-August-2014
-  * @brief   UART functions.
-  ******************************************************************************
-  * @attention
-  *
-  * Use this functions to configure serial comunication interface (UART).
-  *
-  ******************************************************************************
-  */
+//---------------------------------------------
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ## @CPU:    STM32F030
+// ##
+// #### UART.C ################################
+//---------------------------------------------
 
 /* Includes ------------------------------------------------------------------*/
 #include "hard.h"
@@ -20,7 +15,7 @@
 
 #include <string.h>
 
-//#define SIZEOF_DATA	64
+
 
 
 //--- Private typedef ---//
@@ -38,13 +33,6 @@ extern volatile unsigned char data1[];
 //static unsigned char data_back[10];
 extern volatile unsigned char data[];
 
-#ifdef USE_USART1
-// extern volatile unsigned char usart1_pckt_ready;
-// extern volatile unsigned char usart1_have_data;
-// //extern volatile unsigned char usart1_mini_timeout;
-// extern volatile unsigned char tx1buff[];
-// extern volatile unsigned char rx1buff[];
-#endif
 
 #ifdef USE_USART2
 extern volatile unsigned char usart2_pckt_ready;
@@ -56,11 +44,10 @@ extern volatile unsigned char rx2buff[];
 
 
 //--- Private variables ---//
-#ifdef USE_USART1
 volatile unsigned char * ptx1;
 volatile unsigned char * ptx1_pckt_index;
 volatile unsigned char * prx1;
-#endif
+
 
 #ifdef USE_USART2
 volatile unsigned char * ptx2;
@@ -75,7 +62,7 @@ volatile unsigned char * prx2;
 //--- Private function prototypes ---//
 
 //--- Module functions ---//
-#ifdef USE_USART1
+
 void USART1Config(void)
 {
 	if (!USART1_CLK)
@@ -233,7 +220,7 @@ void USART1_IRQHandler(void)
 //
 // 	return (unsigned char) len;
 // }
-#endif	//USE_USART1
+
 
 #ifdef USE_USART2
 void USART2Config(void)

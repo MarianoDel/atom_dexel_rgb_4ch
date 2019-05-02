@@ -1,17 +1,12 @@
-/**
-  ******************************************************************************
-  * @file    Template_2/main.c
-  * @author  Nahuel
-  * @version V1.0
-  * @date    22-August-2014
-  * @brief   Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Use this template for new projects with stm32f0xx family.
-  *
-  ******************************************************************************
-  */
+//------------------------------------------------
+// #### PROYECTO DEXEL 4CH #######################
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ##
+// #### MAIN.C ###################################
+//------------------------------------------------
 
 /* Includes ------------------------------------------------------------------*/
 #include "hard.h"
@@ -33,7 +28,7 @@
 
 
 
-//--- VARIABLES EXTERNAS ---//
+// Externals --------------------------------------------
 volatile unsigned char timer_1seg = 0;
 
 volatile unsigned short timer_led_comm = 0;
@@ -62,23 +57,21 @@ volatile unsigned char data[10];
 
 volatile unsigned short prog_timer = 0;
 
-//--- VARIABLES GLOBALES ---//
+// --- Externals del o para los Switches -------
+volatile unsigned char switches_timer;
+
+
+// Globals ----------------------------------------
 parameters_typedef param_struct;
+
 
 // ------- de los timers -------
 volatile unsigned short timer_standby;
 volatile unsigned short timer_dmx_display_show;
 volatile unsigned char display_timer;
-volatile unsigned char switches_timer;
 volatile unsigned char filter_timer;
-static __IO uint32_t TimingDelay;
-
-volatile unsigned char door_filter;
 volatile unsigned char take_sample;
-volatile unsigned char move_relay;
 
-volatile unsigned char secs = 0;
-volatile unsigned short minutes = 0;
 
 // ------- del display -------
 unsigned char numbers[LAST_NUMBER];
@@ -94,10 +87,6 @@ unsigned char display_blinking_timer = 0;
 unsigned char display_blinking = 0;
 unsigned char display_was_on = 0;
 
-
-// ------- de los switches -------
-unsigned short s1;
-unsigned short s2;
 
 // ------- del DMX -------
 volatile unsigned char signal_state = 0;
@@ -120,12 +109,9 @@ unsigned char vd4 [LARGO_F + 1];
 #define LOOK_FOR_START	3
 
 //--- FUNCIONES DEL MODULO ---//
-void Delay(__IO uint32_t nTime);
 void TimingDelay_Decrement(void);
-
-
 unsigned short Get_Temp (void);
-void Update_PWM (unsigned short);
+
 
 // ------- del display -------
 void UpdateDisplay (void);
@@ -137,12 +123,6 @@ unsigned char TranslateNumber (unsigned char);
 unsigned short FromDsToChannel (void);
 #define FromChannelToDs(X)	ShowNumbers((X))
 
-
-// ------- de los switches -------
-void UpdateSwitches (void);
-unsigned char CheckS1 (void);
-unsigned char CheckS2 (void);
-#define TIMER_FOR_CAT_SW	200
 
 // ------- del DMX -------
 extern void EXTI4_15_IRQHandler(void);
@@ -1358,25 +1338,6 @@ int main(void)
 
 
 //--- End of Main ---//
-void Update_PWM (unsigned short pwm)
-{
-	Update_TIM3_CH1 (pwm);
-	Update_TIM3_CH2 (4095 - pwm);
-}
-
-
-/**
-  * @brief  Inserts a delay time.
-  * @param  nTime: specifies the delay time length, in milliseconds.
-  * @retval None
-  */
-void Delay(__IO uint32_t nTime)
-{
-  TimingDelay = nTime;
-
-  while(TimingDelay != 0);
-}
-
 unsigned short Get_Temp (void)
 {
 	unsigned short total_ma;
@@ -1737,61 +1698,6 @@ void UpdateDisplay (void)
 	}
 }
 
-void UpdateSwitches (void)
-{
-	//revisa los switches cada 10ms
-	if (!switches_timer)
-	{
-		if (S1_PIN)
-			s1++;
-		else if (s1 > 50)
-			s1 -= 50;
-		else if (s1 > 10)
-			s1 -= 5;
-		else if (s1)
-			s1--;
-
-		if (S2_PIN)
-			s2++;
-		else if (s2 > 50)
-			s2 -= 50;
-		else if (s2 > 10)
-			s2 -= 5;
-		else if (s2)
-			s2--;
-
-		switches_timer = SWITCHES_TIMER_RELOAD;
-	}
-}
-
-unsigned char CheckS1 (void)	//cada check tiene 10ms
-{
-	if (s1 > SWITCHES_THRESHOLD_FULL)
-		return S_FULL;
-
-	if (s1 > SWITCHES_THRESHOLD_HALF)
-		return S_HALF;
-
-	if (s1 > SWITCHES_THRESHOLD_MIN)
-		return S_MIN;
-
-	return S_NO;
-}
-
-unsigned char CheckS2 (void)
-{
-	if (s2 > SWITCHES_THRESHOLD_FULL)
-		return S_FULL;
-
-	if (s2 > SWITCHES_THRESHOLD_HALF)
-		return S_HALF;
-
-	if (s2 > SWITCHES_THRESHOLD_MIN)
-		return S_MIN;
-
-	return S_NO;
-}
-
 
 void DMX_Ena(void)
 {
@@ -1800,12 +1706,14 @@ void DMX_Ena(void)
 	USART1_RX_ENA;
 }
 
+
 void DMX_Disa(void)
 {
 	//deshabilito la interrupcion
 	EXTIOff ();
 	USART1_RX_DISA;
 }
+
 
 void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHILIPS
 {
@@ -1882,55 +1790,39 @@ void EXTI4_15_IRQHandler(void)		//nueva detecta el primer 0 en usart Consola PHI
 
 void TimingDelay_Decrement(void)
 {
-	if (TimingDelay != 0x00)
-	{
-		TimingDelay--;
-	}
+    if (wait_ms_var)
+        wait_ms_var--;
 
-	if (wait_ms_var)
-		wait_ms_var--;
+    if (display_timer)
+        display_timer--;
 
-	if (display_timer)
-		display_timer--;
+    if (timer_standby)
+        timer_standby--;
 
-	if (timer_standby)
-		timer_standby--;
+    if (switches_timer)
+        switches_timer--;
 
-	if (switches_timer)
-		switches_timer--;
+    if (dmx_timeout_timer)
+        dmx_timeout_timer--;
 
-	if (dmx_timeout_timer)
-		dmx_timeout_timer--;
+    if (timer_dmx_display_show)
+        timer_dmx_display_show--;
 
-	if (timer_dmx_display_show)
-		timer_dmx_display_show--;
+    if (prog_timer)
+        prog_timer--;
 
-	if (prog_timer)
-		prog_timer--;
+    if (take_sample)
+        take_sample--;
 
-	if (take_sample)
-		take_sample--;
+    if (filter_timer)
+        filter_timer--;
 
-	if (filter_timer)
-		filter_timer--;
+    if (timer_for_cat_switch)
+        timer_for_cat_switch--;
 
-	if (timer_for_cat_switch)
-		timer_for_cat_switch--;
+    if (timer_for_cat_display)
+        timer_for_cat_display--;
 
-	if (timer_for_cat_display)
-		timer_for_cat_display--;
-
-	/*
-	//cuenta 1 segundo
-	if (button_timer_internal)
-		button_timer_internal--;
-	else
-	{
-		if (button_timer)
-		{
-			button_timer--;
-			button_timer_internal = 1000;
-		}
-	}
-	*/
 }
+
+//--- end of file ---//

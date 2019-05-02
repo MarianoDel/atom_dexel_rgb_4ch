@@ -1,32 +1,26 @@
-/**
-  ******************************************************************************
-  * @file    Template_2/main.h
-  * @author  Nahuel
-  * @version V1.0
-  * @date    22-August-2014
-  * @brief   Header for gpio module
-  ******************************************************************************
-  * @attention
-  *
-  *
-  *
-  ******************************************************************************
-  */
-
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __STM32F0X_GPIO_H
-#define __STM32F0X_GPIO_H
+//---------------------------------------------
+// ##
+// ## @Author: Med
+// ## @Editor: Emacs - ggtags
+// ## @TAGS:   Global
+// ## @CPU:    STM32F030
+// ##
+// #### GPIO.H ################################
+//---------------------------------------------
+#ifndef _GPIO_H_
+#define _GPIO_H_
 
 //#include "stm32f0xx.h"
 
 //--- Exported types ---//
 //--- Exported constants ---//
-//--- Exported macro ---//
+//--- Enable of Ports Pins ---//
 #define GPIOA_ENABLE
 #define GPIOB_ENABLE
 //#define GPIOF_ENABLE
 
 #define WITH_EXTI
+
 
 #define GPIOA_CLK (RCC->AHBENR & 0x00020000)
 #define GPIOA_CLK_ON RCC->AHBENR |= 0x00020000
