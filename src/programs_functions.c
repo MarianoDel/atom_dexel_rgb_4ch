@@ -9,6 +9,7 @@
 //------------------------------------------------
 #include "programs_functions.h"
 #include "hard.h"
+#include "display_7seg.h"
 
 //cual es el de mas ciclo de trabajo el 1 o el 9
 #define ONE_FOR_NINE

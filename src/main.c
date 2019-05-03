@@ -21,6 +21,7 @@
 #include "programs_functions.h"
 
 #include "tim.h"
+#include "display_7seg.h"
 
 //#include <stdio.h>
 //#include <string.h>
@@ -30,7 +31,7 @@
 
 // Externals --------------------------------------------
 volatile unsigned char timer_1seg = 0;
-
+volatile unsigned char display_timer = 0;
 volatile unsigned short timer_led_comm = 0;
 volatile unsigned short timer_for_channels_switch = 0;
 volatile unsigned short timer_for_channels_display = 0;
@@ -60,6 +61,11 @@ volatile unsigned short prog_timer = 0;
 // --- Externals del o para los Switches -------
 volatile unsigned char switches_timer;
 
+// --- Externals del display -------
+unsigned char ds3_number = 0;
+unsigned char ds2_number = 0;
+unsigned char ds1_number = 0;
+unsigned char display_blinking = 0;
 
 // Globals ----------------------------------------
 parameters_typedef param_struct;
@@ -68,7 +74,6 @@ parameters_typedef param_struct;
 // ------- de los timers -------
 volatile unsigned short timer_standby;
 volatile unsigned short timer_dmx_display_show;
-volatile unsigned char display_timer;
 volatile unsigned char filter_timer;
 volatile unsigned char take_sample;
 
@@ -77,15 +82,9 @@ volatile unsigned char take_sample;
 unsigned char numbers[LAST_NUMBER];
 unsigned char * p_numbers;
 
-unsigned char last_digit;
-unsigned char display_state;
-unsigned char ds3_number;
-unsigned char ds2_number;
-unsigned char ds1_number;
+// unsigned char last_digit;
+// unsigned char display_state;
 
-unsigned char display_blinking_timer = 0;
-unsigned char display_blinking = 0;
-unsigned char display_was_on = 0;
 
 
 // ------- del DMX -------
@@ -115,12 +114,6 @@ unsigned short Get_Temp (void);
 
 // ------- del display -------
 void UpdateDisplay (void);
-void VectorToDisplay (unsigned char);
-void ShowNumbers (unsigned short);
-void SendSegment (unsigned char, unsigned char);
-unsigned char TranslateNumber (unsigned char);
-unsigned short FromDsToChannel (void);
-#define FromChannelToDs(X)	ShowNumbers((X))
 
 
 // ------- del DMX -------
@@ -1402,304 +1395,10 @@ unsigned short MAFilter16 (unsigned char new_sample, unsigned char * vsample)
     return total_ma >> DIVISOR_F;
 }
 
-void SendSegment (unsigned char display, unsigned char segment)
-{
-	unsigned char dbkp = 0;
-
-	OE_OFF;
-
-#if ((defined HARD_VER_1_3) || (defined HARD_VER_1_2) || (defined HARD_VER_1_1))
-	//PRUEBO desplazando 1 a la izq
-	PWR_DS1_OFF;
-	PWR_DS2_OFF;
-	PWR_DS3_OFF;
-
-	dbkp = display;
-
-    if (segment & 0x80)
-    	display |= 1;
-    else
-    	display &= 0xFE;
-
-    Send_SPI_Single (display);
-    segment <<= 1;
-    Send_SPI_Single (segment);
-
-	if (dbkp == DISPLAY_DS1)
-		PWR_DS1_ON;
-	else if (dbkp == DISPLAY_DS2)
-		PWR_DS2_ON;
-	else if (dbkp == DISPLAY_DS3)
-		PWR_DS3_ON;
-
-#endif
-
-#ifdef HARD_VER_1_0
-	//PRUEBO desplazando 1 a la izq
-	display <<= 1;
-    if (segment & 0x80)
-    	display |= 1;
-    else
-    	display &= 0xFE;
-
-    Send_SPI_Single (display);
-    segment <<= 1;
-    Send_SPI_Single (segment);
-#endif
-
-	OE_ON;
-}
 
 
-//carga los numeros a mostrar en secuencia en un vector
-//del 1 al 9; 10 es cero; 11 es punto; 0, 12, 13, 14, 15 apagar
-void VectorToDisplay (unsigned char new_number)
-{
-	unsigned char i;
-	//me fijo si hay espacio
-	if (p_numbers < &numbers[LAST_NUMBER])
-	{
-		//busco la primer posicion vacia y pongo el nuevo numero
-		for (i = 0; i < LAST_NUMBER; i++)
-		{
-			if (numbers[i] == 0)
-			{
-				numbers[i] = new_number;
-				i = LAST_NUMBER;
-			}
-		}
-	}
-}
 
-unsigned short FromDsToChannel (void)	//en DS 10 es cero; OJO CON 11 es punto; 0, 12, 13, 14, 15 apagar
-{
-	unsigned short ch;
 
-	if (ds1_number == DISPLAY_ZERO)
-		ch = 0;
-	else
-		ch = ds1_number * 100;
-
-	if (ds2_number != DISPLAY_ZERO)
-		ch += ds2_number * 10;
-
-	if (ds3_number != DISPLAY_ZERO)
-		ch += ds3_number;
-
-	return ch;
-}
-
-//DS1 centena
-//DS2 decena
-//DS3 unidades
-void ShowNumbers (unsigned short number)
-{
-	unsigned char a, b;
-
-	a = number / 100;
-	ds1_number = a;
-	if (ds1_number == 0)
-		ds1_number = 10;
-
-	b = (number - a * 100) / 10;
-	ds2_number = b;
-	if (ds2_number == 0)
-		ds2_number = 10;
-
-	ds3_number = number - a * 100 - b * 10;
-	if (ds3_number == 0)
-		ds3_number = 10;
-}
-
-#if ((defined HARD_VER_1_3) || (defined HARD_VER_1_2) || (defined HARD_VER_1_1))
-//		dp g f e d c b a
-//bits   7 6 5 4 3 2 1 0
-//sin negar
-unsigned char TranslateNumber (unsigned char number)	//del 1 al 9; 10 es cero; 11 es punto; 0, 12, 13, 14, 15 apagar
-{
-	//											     none,    1,    2,    3,    4,    5,    6,    7,    8,    9,   10,
-	const unsigned char vnumbers [25] = { 0x00, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x67, 0x3F,
-	//                                   point, line,  rem, prog,    E,    C,    H,   1P,    S,    A,    T,
-													  0x80, 0x40, 0x63, 0x73, 0x79, 0x58, 0x74, 0x86, 0x6D, 0x5F, 0x78,
-	//                                       R,    G,    N,
-													  0x50, 0x6F, 0x54 };
-	if (number < sizeof (vnumbers))
-		number = vnumbers[number];
-	else
-		number = 0;
-
-	return number;
-}
-#endif
-
-#ifdef HARD_VER_1_0
-//		dp g f e d c b a
-//bits   7 6 5 4 3 2 1 0
-//negados
-unsigned char TranslateNumber (unsigned char number)	//del 1 al 9; 10 es cero; 11 es punto; 0, 12, 13, 14, 15 apagar
-{
-	//											     none,    1,    2,    3,    4,    5,    6,    7,    8,    9,   10,
-	const unsigned char vnumbers [25] = { 0xFF, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x98, 0xC0,
-	//                                   point, line,  rem, prog,    E,    C,    H,   1P,    S,    A,    T,
-													  0x7F, 0xBF, 0x9C, 0x8C, 0x86, 0xA7, 0x8B, 0x79, 0x92, 0xA0, 0x87,
-	//                                       R,    G,    N,
-													  0xAF, 0x90, 0xAB };
-	if (number < sizeof (vnumbers))
-		number = vnumbers[number];
-	else
-		number = 0xFF;
-
-	return number;
-}
-#endif
-
-void UpdateDisplay (void)
-{
-	unsigned char a;
-
-	if (!display_timer)
-	{
-		switch (display_state)	//revisa a que display le toca
-		{
-			case 0:
-				//primero reviso si tengo blink de digito
-				if (display_blinking & DISPLAY_DS3)
-				{
-					//rutina blinking
-					if (!display_blinking_timer)
-					{
-						if (display_was_on)
-						{
-							a = TranslateNumber(DISPLAY_NONE);
-							SendSegment(DISPLAY_DS3, a);
-							display_was_on = 0;
-						}
-						else
-						{
-							a = TranslateNumber(ds3_number);
-							SendSegment(DISPLAY_DS3, a);
-							display_was_on =1;
-						}
-						display_blinking_timer = BLINKING_UPDATE;
-					}
-					else
-					{
-						if (display_was_on)		//si mostraba el numero sigo asi
-						{
-							a = TranslateNumber(ds3_number);
-							SendSegment(DISPLAY_DS3, a);
-						}
-						else
-						{
-							a = TranslateNumber(DISPLAY_NONE);
-							SendSegment(DISPLAY_DS3, a);
-						}
-						display_blinking_timer--;
-					}
-				}
-				else	//si no muestro como siempre
-				{
-					a = TranslateNumber(ds3_number);
-					SendSegment(DISPLAY_DS3, a);
-				}
-				display_state++;
-				break;
-
-			case 1:
-				//primero reviso si tengo blink de digito
-				if (display_blinking & DISPLAY_DS2)
-				{
-					//rutina blinking
-					if (!display_blinking_timer)
-					{
-						if (display_was_on)
-						{
-							a = TranslateNumber(DISPLAY_NONE);
-							SendSegment(DISPLAY_DS2, a);
-							display_was_on = 0;
-						}
-						else
-						{
-							a = TranslateNumber(ds2_number);
-							SendSegment(DISPLAY_DS2, a);
-							display_was_on =1;
-						}
-						display_blinking_timer = BLINKING_UPDATE;
-					}
-					else
-					{
-						if (display_was_on)		//si mostraba el numero sigo asi
-						{
-							a = TranslateNumber(ds2_number);
-							SendSegment(DISPLAY_DS2, a);
-						}
-						else
-						{
-							a = TranslateNumber(DISPLAY_NONE);
-							SendSegment(DISPLAY_DS2, a);
-						}
-						display_blinking_timer--;
-					}
-				}
-				else	//si no muestro como siempre
-				{
-					a = TranslateNumber(ds2_number);
-					SendSegment(DISPLAY_DS2, a);
-				}
-				display_state++;
-				break;
-
-			case 2:
-				//primero reviso si tengo blink de digito
-				if (display_blinking & DISPLAY_DS1)
-				{
-					//rutina blinking
-					if (!display_blinking_timer)
-					{
-						if (display_was_on)
-						{
-							a = TranslateNumber(DISPLAY_NONE);
-							SendSegment(DISPLAY_DS1, a);
-							display_was_on = 0;
-						}
-						else
-						{
-							a = TranslateNumber(ds1_number);
-							SendSegment(DISPLAY_DS1, a);
-							display_was_on =1;
-						}
-						display_blinking_timer = BLINKING_UPDATE;
-					}
-					else
-					{
-						if (display_was_on)		//si mostraba el numero sigo asi
-						{
-							a = TranslateNumber(ds1_number);
-							SendSegment(DISPLAY_DS1, a);
-						}
-						else
-						{
-							a = TranslateNumber(DISPLAY_NONE);
-							SendSegment(DISPLAY_DS1, a);
-						}
-						display_blinking_timer--;
-					}
-				}
-				else	//si no muestro como siempre
-				{
-					a = TranslateNumber(ds1_number);
-					SendSegment(DISPLAY_DS1, a);
-				}
-				display_state = 0;
-				break;
-
-			default:
-				display_state = 0;
-				break;
-		}
-		display_timer = DISPLAY_TIMER_RELOAD;
-	}
-}
 
 
 void DMX_Ena(void)
