@@ -32,8 +32,8 @@
 volatile unsigned char timer_1seg = 0;
 
 volatile unsigned short timer_led_comm = 0;
-volatile unsigned short timer_for_cat_switch = 0;
-volatile unsigned short timer_for_cat_display = 0;
+volatile unsigned short timer_for_channels_switch = 0;
+volatile unsigned short timer_for_channels_display = 0;
 volatile unsigned char buffrx_ready = 0;
 volatile unsigned char *pbuffrx;
 volatile unsigned short wait_ms_var = 0;
@@ -118,7 +118,6 @@ void UpdateDisplay (void);
 void VectorToDisplay (unsigned char);
 void ShowNumbers (unsigned short);
 void SendSegment (unsigned char, unsigned char);
-void ShowNumbersAgain (void);
 unsigned char TranslateNumber (unsigned char);
 unsigned short FromDsToChannel (void);
 #define FromChannelToDs(X)	ShowNumbers((X))
@@ -508,7 +507,7 @@ int main(void)
 
 //muestro versiones de hardware, software y firmware
 //-- HARDWARE --
-#ifdef VER_1_3
+#ifdef HARD_VER_1_3
 	timer_standby = 1000;
 	ds1_number = DISPLAY_H;				//Hardware
 	ds2_number = DISPLAY_1P;			//1.
@@ -517,7 +516,7 @@ int main(void)
 		UpdateDisplay();
 #endif
 
-#ifdef VER_1_2
+#ifdef HARD_VER_1_2
 	timer_standby = 1000;
 	ds1_number = DISPLAY_H;				//Hardware
 	ds2_number = DISPLAY_1P;			//1.
@@ -526,7 +525,7 @@ int main(void)
 		UpdateDisplay();
 #endif
 
-#ifdef VER_1_1
+#ifdef HARD_VER_1_1
 	timer_standby = 1000;
 	ds1_number = DISPLAY_H;				//Hardware
 	ds2_number = DISPLAY_1P;			//1.
@@ -535,7 +534,7 @@ int main(void)
 		UpdateDisplay();
 #endif
 
-#ifdef VER_1_0
+#ifdef HARD_VER_1_0
 	timer_standby = 1000;
 	ds1_number = DISPLAY_H;				//Hardware
 	ds2_number = DISPLAY_1P;			//1.
@@ -545,13 +544,24 @@ int main(void)
 #endif
 
 //-- SOFTWARE --
+#ifdef SOFT_VER_1_8
 	timer_standby = 1000;
-	ds1_number = DISPLAY_S;				//Software
-	ds2_number = DISPLAY_1P;			//1.
-	ds3_number = 7;						//7
+	ds1_number = DISPLAY_S;    //S
+	ds2_number = DISPLAY_1P;   //1.
+	ds3_number = 8;            //8
 	while (timer_standby)
 		UpdateDisplay();
+#endif
 
+#ifdef SOFT_VER_1_7
+	timer_standby = 1000;
+	ds1_number = DISPLAY_S;	   //S
+	ds2_number = DISPLAY_1P;   //1.
+	ds3_number = 7;		   //7
+	while (timer_standby)
+		UpdateDisplay();
+#endif
+        
 //-- FIRMWARE --
 #ifdef RGB_FOR_CHANNELS
 	timer_standby = 1000;
@@ -1123,8 +1133,7 @@ int main(void)
 				switch (last_program)
 				{
 					case 1:
-						//necesito un short para la cuenta
-						if (!timer_for_cat_switch)
+						if (!timer_for_channels_switch)
 						{
 							if (fixed_data[0] < 100)
 								fixed_data[0]++;
@@ -1132,13 +1141,12 @@ int main(void)
 								fixed_data[0] = 0;
 
 							FromChannelToDs(fixed_data[0]);
-							timer_for_cat_switch = TIMER_FOR_CAT_SW;
+							timer_for_channels_switch = TT_CHANNELS_SW;
 						}
 						break;
 
 					case 2:
-						//necesito un short para la cuenta
-						if (!timer_for_cat_switch)
+						if (!timer_for_channels_switch)
 						{
 							if (fixed_data[1] < 100)
 								fixed_data[1]++;
@@ -1146,7 +1154,7 @@ int main(void)
 								fixed_data[1] = 0;
 
 							FromChannelToDs(fixed_data[1]);
-							timer_for_cat_switch = TIMER_FOR_CAT_SW;
+							timer_for_channels_switch = TT_CHANNELS_SW;
 						}
 						break;
 
@@ -1205,7 +1213,7 @@ int main(void)
 					timer_standby = TIMER_STANDBY_TIMEOUT;
 				}
 
-				if (!timer_for_cat_display)
+				if (!timer_for_channels_display)
 				{
 					switch (show_channels_state)
 					{
@@ -1238,7 +1246,7 @@ int main(void)
 							show_channels_state = SHOW_NUMBERS;
 							break;
 					}
-					timer_for_cat_display = TTIMER_FOR_CAT_DISPLAY;
+					timer_for_channels_display = TT_CHANNELS_DISPLAY;
 				}
 #endif
 
@@ -1400,7 +1408,7 @@ void SendSegment (unsigned char display, unsigned char segment)
 
 	OE_OFF;
 
-#if ((defined VER_1_1) || (defined VER_1_2) || (defined VER_1_3))
+#if ((defined HARD_VER_1_3) || (defined HARD_VER_1_2) || (defined HARD_VER_1_1))
 	//PRUEBO desplazando 1 a la izq
 	PWR_DS1_OFF;
 	PWR_DS2_OFF;
@@ -1426,7 +1434,7 @@ void SendSegment (unsigned char display, unsigned char segment)
 
 #endif
 
-#ifdef VER_1_0
+#ifdef HARD_VER_1_0
 	//PRUEBO desplazando 1 a la izq
 	display <<= 1;
     if (segment & 0x80)
@@ -1440,11 +1448,6 @@ void SendSegment (unsigned char display, unsigned char segment)
 #endif
 
 	OE_ON;
-}
-
-void ShowNumbersAgain (void)
-{
-	ShowNumbers (last_digit);
 }
 
 
@@ -1508,7 +1511,7 @@ void ShowNumbers (unsigned short number)
 		ds3_number = 10;
 }
 
-#if ((defined VER_1_1) || (defined VER_1_2) || (defined VER_1_3))
+#if ((defined HARD_VER_1_3) || (defined HARD_VER_1_2) || (defined HARD_VER_1_1))
 //		dp g f e d c b a
 //bits   7 6 5 4 3 2 1 0
 //sin negar
@@ -1529,7 +1532,7 @@ unsigned char TranslateNumber (unsigned char number)	//del 1 al 9; 10 es cero; 1
 }
 #endif
 
-#ifdef VER_1_0
+#ifdef HARD_VER_1_0
 //		dp g f e d c b a
 //bits   7 6 5 4 3 2 1 0
 //negados
@@ -1817,11 +1820,11 @@ void TimingDelay_Decrement(void)
     if (filter_timer)
         filter_timer--;
 
-    if (timer_for_cat_switch)
-        timer_for_cat_switch--;
+    if (timer_for_channels_switch)
+        timer_for_channels_switch--;
 
-    if (timer_for_cat_display)
-        timer_for_cat_display--;
+    if (timer_for_channels_display)
+        timer_for_channels_display--;
 
 }
 

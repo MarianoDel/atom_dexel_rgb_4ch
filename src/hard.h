@@ -15,16 +15,19 @@
 
 //-- Defines For Configuration -------------------
 //---- Configuration for Hardware Versions -------
-#define VER_1_3
-//#define VER_1_2
-//#define VER_1_1
-//#define VER_1_0
+#define HARD_VER_1_3
+// #define HARD_VER_1_2
+// #define HARD_VER_1_1
+// #define HARD_VER_1_0
 
 //---- Configuration for Firmware ----------------
-//#define WITH_GRANDMASTER	//tiene un quinto canal que funciona como grandmaster de los 4 primeros
+#define SOFT_VER_1_8          //agrego funcionalidad 1ch paralelo
+// #define SOFT_VER_1_7
 
-//#define RGB_FOR_CHANNELS
-#define RGB_FOR_PROGRAMS
+// #define WITH_GRANDMASTER	//tiene un quinto canal que funciona como grandmaster de los 4 primeros
+
+#define RGB_FOR_CHANNELS    //solo 2ch con dimmer fijo
+// #define RGB_FOR_PROGRAMS    //elije programas y mueve los 4ch en secuencias predefinidas  
 
 //------ Configuration for Firmware-Channels -----
 #ifdef RGB_FOR_CHANNELS
@@ -34,22 +37,17 @@
 //#define RGB_FOR_CHANNELS_CH1_CH3_SYNC
 //#define RGB_FOR_CHANNELS_CH2_CH4_SYNC
 #endif
-//-------- Configuration for Outputs-Channels -----
-//#define RGB_OUTPUT_LM317
-#define RGB_OUTPUT_MOSFET_KIRNO
-//#define RGB_OUTPUT_CAT
 #endif
 
 //---- Configuration for Firmware-Programs --------
 #ifdef RGB_FOR_PROGRAMS
 #define WHITE_AS_IN_RGB		//el blanco lo forma con los 3 colores
 //#define WHITE_AS_WHITE	//el blanco tiene leds blancos individuales
-
-//-------- Configuration for Outputs-Firmware ------
+#endif
+//---- Configuration for Outputs -----------------
 #define RGB_OUTPUT_LM317
 //#define RGB_OUTPUT_MOSFET_KIRNO	//muestra CAT en display
 //#define RGB_OUTPUT_CAT			//muestra CAT en display
-#endif
 
 //-- End Of Defines For Configuration ---------------
 
@@ -192,7 +190,8 @@
 #define SWITCHES_THRESHOLD_HALF	100		//1 segundo
 #define SWITCHES_THRESHOLD_MIN	5		//50 ms
 
-#define TTIMER_FOR_CAT_DISPLAY			2000	//tiempo entre que dice canal y el numero
+#define TT_CHANNELS_DISPLAY     2000    //tiempo entre que dice canal y el numero
+#define TT_CHANNELS_SW          200     //timeout para incrementar dimmer en channels
 #define TIMER_STANDBY_TIMEOUT_REDUCED	2000	//reduced 2 segs
 #define TIMER_STANDBY_TIMEOUT			6000	//6 segundos
 #define DMX_DISPLAY_SHOW_TIMEOUT		30000	//30 segundos

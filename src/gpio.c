@@ -63,7 +63,7 @@ void GPIO_Config (void)
 	if (!GPIOA_CLK)
 		GPIOA_CLK_ON;
 
-#ifdef VER_1_0
+#ifdef HARD_VER_1_0
 	temp = GPIOA->MODER;	//2 bits por pin
 	temp &= 0xFC0C0000;		//PA0 (analog input); PA1 output; PA2 PA3 input; PA4 PA5 output; PA6 PA7(alternative)
 	temp |= 0x0160A507;		//PA8 input; PA10 alternative;  PA11 PA12 output
@@ -87,7 +87,7 @@ void GPIO_Config (void)
 	GPIOA->PUPDR = temp;
 #endif
 
-#if ((defined VER_1_1) || (defined VER_1_2) || (defined VER_1_3))
+#if ((defined HARD_VER_1_3) || (defined HARD_VER_1_2) || (defined HARD_VER_1_1))
 	temp = GPIOA->MODER;	//2 bits por pin
 	temp &= 0xFC0C0000;		//PA0 (analog input); PA1 output; PA2 PA3 input; PA4 PA5 output; PA6 PA7(alternative)
 	temp |= 0x0160A507;		//PA8 input; PA10 alternative;  PA11 PA12 output

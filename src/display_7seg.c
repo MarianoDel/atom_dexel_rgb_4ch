@@ -1,12 +1,12 @@
-//------------------------------------------------------
-// #### PROYECTO PANEL ALARMA VAPORE - Custom Board ####
+//------------------------------------------------
+// #### PROYECTO DEXEL 4CH #######################
 // ##
 // ## @Author: Med
 // ## @Editor: Emacs - ggtags
 // ## @TAGS:   Global
 // ##
-// #### DISPLAY_7SEG.C #######################################
-//------------------------------------------------------
+// #### DISPLAY_7SEG.C ###########################
+//------------------------------------------------
 
 /* Includes ------------------------------------------------------------------*/
 #include "display_7seg.h"
@@ -31,18 +31,59 @@ char * p_vector_numbers;
 display_sm_t display_state = DISPLAY_SM_INIT;
 
 /* Module Functions ------------------------------------------------------------*/
-void SendSegment (unsigned char segment)
-{
-    OE_OFF;
-    if (segment & 0x80)
-    	Send_SPI_Single (0x01);
-    else
-    	Send_SPI_Single (0x00);
 
+//Envia numeros o letras a uno de los 3 displays 7seg con hc595
+//ver1.3 ver1.2 ver 1.1 ==> 1 hc595 y 3 tr
+//ver1.0 ==> 2 hc595
+void SendSegment (unsigned char display, unsigned char segment)
+{
+    unsigned char dbkp = 0;
+
+    OE_OFF;
+
+#if ((defined HARD_VER_1_3) || (defined HARD_VER_1_2) || (defined HARD_VER_1_1))
+
+    PWR_DS1_OFF;
+    PWR_DS2_OFF;
+    PWR_DS3_OFF;
+
+    dbkp = display;
+    //Desplazando 1 a la izq para compensar error en hc595
+    if (segment & 0x80)
+    	display |= 1;
+    else
+    	display &= 0xFE;
+
+    Send_SPI_Single (display);
     segment <<= 1;
     Send_SPI_Single (segment);
+
+    if (dbkp == DISPLAY_DS1)
+        PWR_DS1_ON;
+    else if (dbkp == DISPLAY_DS2)
+        PWR_DS2_ON;
+    else if (dbkp == DISPLAY_DS3)
+        PWR_DS3_ON;
+
+#endif
+
+#ifdef HARD_VER_1_0
+    //Desplazando 1 a la izq para compensar error en hc595
+    display <<= 1;
+    if (segment & 0x80)
+    	display |= 1;
+    else
+    	display &= 0xFE;
+
+    Send_SPI_Single (display);
+    segment <<= 1;
+    Send_SPI_Single (segment);
+#endif
+
     OE_ON;
 }
+
+
 
 void ShowNumbersAgain (void)
 {
