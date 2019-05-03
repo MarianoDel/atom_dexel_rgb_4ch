@@ -22,11 +22,10 @@
 
 #include "tim.h"
 #include "display_7seg.h"
+#include "dsp.h"
 
 //#include <stdio.h>
 //#include <string.h>
-
-
 
 
 // Externals --------------------------------------------
@@ -78,28 +77,21 @@ volatile unsigned char filter_timer;
 volatile unsigned char take_sample;
 
 
-// ------- del display -------
-unsigned char numbers[LAST_NUMBER];
-unsigned char * p_numbers;
-
-// unsigned char last_digit;
-// unsigned char display_state;
-
-
-
 // ------- del DMX -------
 volatile unsigned char signal_state = 0;
 volatile unsigned char dmx_timeout_timer = 0;
 //unsigned short tim_counter_65ms = 0;
 
 // ------- de los filtros DMX -------
-#define LARGO_F		32
-#define DIVISOR_F	5
-unsigned char vd0 [LARGO_F + 1];
-unsigned char vd1 [LARGO_F + 1];
-unsigned char vd2 [LARGO_F + 1];
-unsigned char vd3 [LARGO_F + 1];
-unsigned char vd4 [LARGO_F + 1];
+#define DMX_FILTER_LENGTH    32
+unsigned char vd0 [DMX_FILTER_LENGTH];
+unsigned char vd1 [DMX_FILTER_LENGTH];
+unsigned char vd2 [DMX_FILTER_LENGTH];
+unsigned char vd3 [DMX_FILTER_LENGTH];
+unsigned char vd4 [DMX_FILTER_LENGTH];
+
+#define TEMP_FILTER_LENGTH    16
+unsigned short vtemp [TEMP_FILTER_LENGTH];
 
 
 #define IDLE	0
@@ -112,24 +104,12 @@ void TimingDelay_Decrement(void);
 unsigned short Get_Temp (void);
 
 
-// ------- del display -------
-void UpdateDisplay (void);
-
-
 // ------- del DMX -------
 extern void EXTI4_15_IRQHandler(void);
 #define DMX_TIMEOUT	20
 void DMX_Ena(void);
 void DMX_Disa(void);
-unsigned char MAFilter (unsigned char, unsigned char *);
 
-//--- FILTROS DE SENSORES ---//
-#define LARGO_FILTRO 16
-#define DIVISOR      4   //2 elevado al divisor = largo filtro
-//#define LARGO_FILTRO 32
-//#define DIVISOR      5   //2 elevado al divisor = largo filtro
-unsigned short vtemp [LARGO_FILTRO + 1];
-unsigned short vpote [LARGO_FILTRO + 1];
 
 //--- FIN DEFINICIONES DE FILTRO ---//
 
@@ -141,1264 +121,896 @@ unsigned short vpote [LARGO_FILTRO + 1];
 //------------------------------------------//
 int main(void)
 {
-	unsigned char main_state = 0;
-	unsigned char last_function;
-	unsigned char last_program, last_program_deep;
-	unsigned short last_channel;
-	unsigned short current_temp = 0;
+    unsigned char main_state = 0;
+    unsigned char last_function;
+    unsigned char last_program, last_program_deep;
+    unsigned short last_channel;
+    unsigned short current_temp = 0;
 
 #ifdef WITH_GRANDMASTER
-	unsigned short acc = 0;
-	unsigned char dummy = 0;
+    unsigned short acc = 0;
+    unsigned char dummy = 0;
 #endif
 #ifdef RGB_FOR_CHANNELS
-	unsigned char show_channels_state = 0;
-	unsigned char fixed_data[2];		//la eleccion del usuario en los canales de 0 a 100
-	unsigned char need_to_save = 0;
+    unsigned char show_channels_state = 0;
+    unsigned char fixed_data[2];		//la eleccion del usuario en los canales de 0 a 100
+    unsigned char need_to_save = 0;
 #endif
-	parameters_typedef * p_mem_init;
-	//!< At this stage the microcontroller clock setting is already configured,
-    //   this is done through SystemInit() function which is called from startup
-    //   file (startup_stm32f0xx.s) before to branch to application main.
-    //   To reconfigure the default setting of SystemInit() function, refer to
-    //   system_stm32f0xx.c file
+    parameters_typedef * p_mem_init;
 
-	//GPIO Configuration.
-	GPIO_Config();
+    //GPIO Configuration.
+    GPIO_Config();
 
-	//TIM Configuration.
-	TIM_3_Init();
-	TIM_14_Init();
+    //TIM Configuration.
+    TIM_3_Init();
+    TIM_14_Init();
 
-	//ACTIVAR SYSTICK TIMER
-	 if (SysTick_Config(48000))
-	 {
-		 while (1)	/* Capture error */
-		 {
-			if (LED)
-				LED_OFF;
-			else
-				LED_ON;
+    //ACTIVAR SYSTICK TIMER
+    if (SysTick_Config(48000))
+    {
+        while (1)	/* Capture error */
+        {
+            if (LED)
+                LED_OFF;
+            else
+                LED_ON;
 
-			Wait_ms(300);
-		 }
-	 }
+            Wait_ms(300);
+        }
+    }
 
-	 //PRUEBA LED Y OE
-	 /*
-	 while (1)
-	 {
-		 if (LED)
-		 {
-			 LED_OFF;
-			 OE_OFF;
-		 }
-		 else
-		 {
-			 LED_ON;
-			 OE_ON;
-		 }
+    /* SPI configuration ------------------------------------------------------*/
+    SPI_Config();
 
-		 Wait_ms(150);
-	 }
-	 */
-	 //FIN PRUEBA LED Y OE
+    Packet_Detected_Flag = 0;
+    DMX_channel_selected = 1;
+    DMX_channel_quantity = 4;
+    USART1Config();
 
-	 /* SPI configuration ------------------------------------------------------*/
-	 SPI_Config();
+    //arranco con todo apagado
+    DMX_Disa();
 
-	 //DE PRODUCCION Y PARA PRUEBAS EN DMX
-	 Packet_Detected_Flag = 0;
-	 DMX_channel_selected = 1;
-	 DMX_channel_quantity = 4;
-	 USART1Config();
+    //--- COMIENZO PROGRAMA DE PRODUCCION
+    RED_PWM (0);
+    GREEN_PWM (0);
+    BLUE_PWM (0);
+    WHITE_PWM (0);
 
-	 //arranco con todo apagado
-	 DMX_Disa();
+    //inicio cuestiones particulares
+    //iniciar variables de usao del programa segun funcion de memoria
 
+    //ADC configuration.
+    AdcConfig();
 
- 	//PRUEBA DISPLAY
-	 /*
-	 PWR_DS1_OFF;
-	 PWR_DS2_OFF;
-	 PWR_DS3_ON;
+    LED_ON;
+    Wait_ms(300);
+    LED_OFF;
 
-	 main_state = TranslateNumber(DISPLAY_LINE);
-	 SendSegment(DISPLAY_DS3, main_state);
-	 while(1);
-	 */
-	 /*
-	 //ShowNumbers(0);
-	 //ShowNumbers(876);
-	 ShowNumbers(666);
-	 //ShowNumbers(111);
-	 while(1)
-	 {
-		 UpdateDisplay ();
-	 }
-	*/
-	 //--- PRUEBA TIM14 DMX
-	 /*
-	 ShowNumbers(0);
-	 while (1)
-	 {
-		 TIM14->CNT = 0;
-		 TIM14->CR1 |= 0x0001;
-
-		 while ((TIM14->CNT) < 2000)
-		 {
-		 }
-		 TIM14->CR1 &= ~0x0001;
-		 if (LED)
-			 LED_OFF;
-		 else
-			 LED_ON;
-
-		 UpdateDisplay ();
-	 }
-	 */
-	 //--- FIN PRUEBA TIM14 DMX
-
-	 //--- PRUEBA USART
-	 /*
-	 EXTIOff();
-	 USART_Config();
-	 ShowNumbers(0);
-	 while (1)
-	 {
-		 DMX_channel_received = 0;
-		 data1[0] = 0;
-		 data1[1] = 0;
-		 data1[2] = 0;
-		 USARTSend('M');
-		 USARTSend('E');
-		 USARTSend('D');
-		 Wait_ms(1);
-		 if ((data1[0] == 'M') && (data1[1] == 'E') && (data1[2] == 'D'))
-			 LED_ON;
-		 else
-			 LED_OFF;
-		 Wait_ms(200);
-		 UpdateDisplay ();
-	 }
-	*/
-	 //--- FIN PRUEBA USART
-
-	 //--- PRUEBA EXTI PA8 con DMX
-	 /*
-	 ShowNumbers(0);
-	 while (1)
-	 {
-		 //cuando tiene DMX mueve el LED
-		 EXTIOn();
-		 Wait_ms(200);
-		 EXTIOff();
-		 Wait_ms(200);
-	 }
-	 */
-	 //--- FIN PRUEBA EXTI PA8 con DMX
-
-	 //--- PRUEBA ADC
-	 /*
-		if (ADC_Conf() == 0)
-		{
-			while (1)
-			{
-				if (LED)
-					LED_OFF;
-				else
-					LED_ON;
-
-				Wait_ms(150);
-			}
-		}
-		while (1)
-		{
-			i = ReadADC1(ADC_CH0);
-			if (i > 2048)
-				LED_ON;
-			else
-				LED_OFF;
-			Wait_ms(50);
-			i = i >> 4;
-			 ShowNumbers (i);
-		}
-		*/
-	//--- FIN ADC
-
-		 //--- PRUEBA FAN
-	 /*
-			while (1)
-			{
-				LED_ON;
-				CTRL_FAN_ON;
-				Wait_ms(300);
-				LED_OFF;
-				CTRL_FAN_OFF;
-				Wait_ms(300);
-			}
-			*/
-		//--- FIN FAN
-
-		//--- PRUEBA CH0 CH1 CH2 CH3 DMX	inicializo mas arriba USART y variables
-		// 	DMX_Ena();
-		//  while (1)
-		//  {
-		// 		 if (Packet_Detected_Flag)
-		// 		 {
-		 //
-		// 			 //llego un paquete DMX
-		// 			 Packet_Detected_Flag = 0;
-		// 			 //en data tengo la info
-		// 			 ShowNumbers (data[0]);
-		// 			 LED_OFF;
-		// 			 Update_TIM3_CH1 (data[0]);
-		// 			 Update_TIM3_CH2 (data[0]);
-		// 			 Update_TIM3_CH3 (data[0]);
-		// 			 Update_TIM3_CH4 (data[0]);
-		 //
-		// 		 }
-		 //
-		// 	 UpdateDisplay ();
-		// 	 UpdateSwitches ();
-		 //
-		//  }
-		//--- FIN PRUEBA CH0 CH1 CH2 CH3 DMX
-
-	//--- PRUEBA blinking de display	inicializo mas arriba USART y variables
-	 /*
-	ds1_number = 1;
-	ds2_number = 2;
-	ds3_number = 3;
-		 while (1)
-		 {
-			 if (CheckS1() > S_NO)
-			 {
-				 //muevo el display en blinking
-				 display_blinking <<= 1;
-				 if (!(display_blinking & 0x07))
-					 display_blinking = DISPLAY_DS1;
-			 }
-			 else if (CheckS2() > S_NO)
-			 {
-				 //prendo o apago el blinking
-				 if (sw_state)
-				 {
-					 display_blinking = 0;
-					 sw_state = 0;
-				 }
-				 else
-				 {
-					 display_blinking = DISPLAY_DS1;
-					 sw_state = 1;
-				 }
-			 }
-
-			 UpdateDisplay ();
-			 UpdateSwitches ();
-
-		 }
-
-	  */
-	//--- FIN PRUEBA blinking display con switches
-
-	//--- PRUEBA CHANNELS PWM
-	/*
-	while (1)
-	{
-		for (i = 0; i < 255; i++)
-		{
-			Update_TIM3_CH1 (i);
-			Update_TIM3_CH2 (i);
-			Update_TIM3_CH3 (i);
-			Update_TIM3_CH4 (i);
-
-			Wait_ms(100);
-		}
-	}
-	*/
-	//--- FIN PRUEBA CHANNELS PWM
-
-	 //--- PRUEBA SWITCHES
-	 /*
-	 i = 0;
-	 while (1)
-	 {
-			 switch (swi)
-			 {
-				 case 0:
-					 s_local = CheckS1();
-					 if (s_local > S_NO)
-						 swi++;
-					 else
-					 {
-						 s_local = CheckS2();
-						 if (s_local > S_NO)
-							 swi = 10;
-					 }
-
-					 break;
-
-				 case 1:
-					 i += s_local;
-					 LED_ON;
-					 swi++;
-					 break;
-
-				 case 2:
-					 //espero que se libere
-					 s_local = CheckS1();
-					 if (s_local == S_NO)
-						 swi = 0;
-
-					 break;
-
-				 case 10:
-					 LED_OFF;
-					 if (i)
-						 i--;
-					swi++;
-					break;
-
-				 case 11:
-					 s_local = CheckS2();
-					 if (s_local == S_NO)
-						 swi = 0;
-					break;
-
-				 default:
-					 swi = 0;
-					 break;
-
-		 }
-
-
-		 ShowNumbers(i);
-		 UpdateDisplay ();
-		 UpdateSwitches ();
-	 }
-	 */
-	 //--- FIN PRUEBA SWITCHES
-
-
-	 //--- COMIENZO PROGRAMA DE PRODUCCION
-	 RED_PWM (0);
-	 GREEN_PWM (0);
-	 BLUE_PWM (0);
-	 WHITE_PWM (0);
-
-	 //inicio cuestiones particulares
-	 //iniciar variables de usao del programa segun funcion de memoria
-
-	//ADC configuration.
-
-	AdcConfig();
-
-	LED_ON;
-	Wait_ms(300);
-	LED_OFF;
-
-//muestro versiones de hardware, software y firmware
-//-- HARDWARE --
+    //muestro versiones de hardware, software y firmware
+    //-- HARDWARE --
 #ifdef HARD_VER_1_3
-	timer_standby = 1000;
-	ds1_number = DISPLAY_H;				//Hardware
-	ds2_number = DISPLAY_1P;			//1.
-	ds3_number = 3;						//3
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_H;				//Hardware
+    ds2_number = DISPLAY_1P;			//1.
+    ds3_number = 3;						//3
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 #ifdef HARD_VER_1_2
-	timer_standby = 1000;
-	ds1_number = DISPLAY_H;				//Hardware
-	ds2_number = DISPLAY_1P;			//1.
-	ds3_number = 2;						//2
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_H;				//Hardware
+    ds2_number = DISPLAY_1P;			//1.
+    ds3_number = 2;						//2
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 #ifdef HARD_VER_1_1
-	timer_standby = 1000;
-	ds1_number = DISPLAY_H;				//Hardware
-	ds2_number = DISPLAY_1P;			//1.
-	ds3_number = 1;						//1
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_H;				//Hardware
+    ds2_number = DISPLAY_1P;			//1.
+    ds3_number = 1;						//1
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 #ifdef HARD_VER_1_0
-	timer_standby = 1000;
-	ds1_number = DISPLAY_H;				//Hardware
-	ds2_number = DISPLAY_1P;			//1.
-	ds3_number = DISPLAY_ZERO;			//0
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_H;				//Hardware
+    ds2_number = DISPLAY_1P;			//1.
+    ds3_number = DISPLAY_ZERO;			//0
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 //-- SOFTWARE --
 #ifdef SOFT_VER_1_8
-	timer_standby = 1000;
-	ds1_number = DISPLAY_S;    //S
-	ds2_number = DISPLAY_1P;   //1.
-	ds3_number = 8;            //8
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_S;    //S
+    ds2_number = DISPLAY_1P;   //1.
+    ds3_number = 8;            //8
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 #ifdef SOFT_VER_1_7
-	timer_standby = 1000;
-	ds1_number = DISPLAY_S;	   //S
-	ds2_number = DISPLAY_1P;   //1.
-	ds3_number = 7;		   //7
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_S;	   //S
+    ds2_number = DISPLAY_1P;   //1.
+    ds3_number = 7;		   //7
+    while (timer_standby)
+        UpdateDisplay();
 #endif
         
 //-- FIRMWARE --
 #ifdef RGB_FOR_CHANNELS
-	timer_standby = 1000;
-	ds1_number = DISPLAY_C;				//Channels
-	ds2_number = DISPLAY_H;				//
-	ds3_number = DISPLAY_N;				//
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_C;				//Channels
+    ds2_number = DISPLAY_H;				//
+    ds3_number = DISPLAY_N;				//
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 #ifdef RGB_FOR_PROGRAMS
-	timer_standby = 1000;
-	ds1_number = DISPLAY_P;				//PRG
-	ds2_number = DISPLAY_R;				//
-	ds3_number = DISPLAY_G;				//
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_P;				//PRG
+    ds2_number = DISPLAY_R;				//
+    ds3_number = DISPLAY_G;				//
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 //-- OUTPUTS --
 #ifdef RGB_OUTPUT_LM317
-	timer_standby = 1000;
-	ds1_number = 3;						//LM317
-	ds2_number = 1;						//
-	ds3_number = 7;						//
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = 3;						//LM317
+    ds2_number = 1;						//
+    ds3_number = 7;						//
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
 #if ((defined RGB_OUTPUT_MOSFET_KIRNO) || (defined RGB_OUTPUT_CAT))
-	timer_standby = 1000;
-	ds1_number = DISPLAY_C;				//CAT o MOSFET KIRNO
-	ds2_number = DISPLAY_A;				//
-	ds3_number = DISPLAY_T;				//
-	while (timer_standby)
-		UpdateDisplay();
+    timer_standby = 1000;
+    ds1_number = DISPLAY_C;				//CAT o MOSFET KIRNO
+    ds2_number = DISPLAY_A;				//
+    ds3_number = DISPLAY_T;				//
+    while (timer_standby)
+        UpdateDisplay();
 #endif
 
-	//--- Main loop ---//
-	while(1)
-	{
-		//PROGRAMA DE PRODUCCION
-
-		//prueba DMX_ena() DMX_dis()
-		/*
-		if (!timer_standby)
-		{
-			timer_standby = 3000;
-			if (swi)
-			{
-				swi = 0;
-				DMX_Ena();
-			}
-			else
-			{
-				DMX_Disa();
-				swi = 1;
-			}
-		}
-		*/
-
-		switch (main_state)
-		{
-			case MAIN_INIT:
-				//cargo las variables desde la memoria
-                            p_mem_init = (parameters_typedef *) (unsigned int *) PAGE31;
+    //--- Main loop ---//
+    while(1)
+    {
+        switch (main_state)
+        {
+        case MAIN_INIT:
+            //cargo las variables desde la memoria
+            p_mem_init = (parameters_typedef *) (unsigned int *) PAGE31;
 #ifdef RGB_FOR_PROGRAMS
-				param_struct.last_function_in_flash = p_mem_init->last_function_in_flash;
-				param_struct.last_program_in_flash = p_mem_init->last_program_in_flash;
-				param_struct.last_program_deep_in_flash = p_mem_init->last_program_deep_in_flash;
-				param_struct.last_channel_in_flash = p_mem_init->last_channel_in_flash;
+            param_struct.last_function_in_flash = p_mem_init->last_function_in_flash;
+            param_struct.last_program_in_flash = p_mem_init->last_program_in_flash;
+            param_struct.last_program_deep_in_flash = p_mem_init->last_program_deep_in_flash;
+            param_struct.last_channel_in_flash = p_mem_init->last_channel_in_flash;
 #endif
 
 #ifdef RGB_FOR_CHANNELS
-				param_struct.last_function_in_flash = p_mem_init->last_function_in_flash;
-				param_struct.last_program_in_flash = p_mem_init->last_program_in_flash;
-				param_struct.last_program_deep_in_flash = p_mem_init->last_program_deep_in_flash;
-				param_struct.last_channel_in_flash = p_mem_init->last_channel_in_flash;
+            param_struct.last_function_in_flash = p_mem_init->last_function_in_flash;
+            param_struct.last_program_in_flash = p_mem_init->last_program_in_flash;
+            param_struct.last_program_deep_in_flash = p_mem_init->last_program_deep_in_flash;
+            param_struct.last_channel_in_flash = p_mem_init->last_channel_in_flash;
 
-				param_struct.pwm_channel_1 = p_mem_init->pwm_channel_1;
-				if (param_struct.pwm_channel_1 > 100)
-					param_struct.pwm_channel_1 = 100;
+            param_struct.pwm_channel_1 = p_mem_init->pwm_channel_1;
+            if (param_struct.pwm_channel_1 > 100)
+                param_struct.pwm_channel_1 = 100;
 
-				param_struct.pwm_channel_2 = p_mem_init->pwm_channel_2;
-				if (param_struct.pwm_channel_2 > 100)
-					param_struct.pwm_channel_2 = 100;
+            param_struct.pwm_channel_2 = p_mem_init->pwm_channel_2;
+            if (param_struct.pwm_channel_2 > 100)
+                param_struct.pwm_channel_2 = 100;
 
-				param_struct.pwm_channel_3 = p_mem_init->pwm_channel_3;
-				if (param_struct.pwm_channel_3 > 100)
-					param_struct.pwm_channel_3 = 100;
+            param_struct.pwm_channel_3 = p_mem_init->pwm_channel_3;
+            if (param_struct.pwm_channel_3 > 100)
+                param_struct.pwm_channel_3 = 100;
 
-				param_struct.pwm_channel_4 = p_mem_init->pwm_channel_4;
-				if (param_struct.pwm_channel_4 > 100)
-					param_struct.pwm_channel_4 = 100;
+            param_struct.pwm_channel_4 = p_mem_init->pwm_channel_4;
+            if (param_struct.pwm_channel_4 > 100)
+                param_struct.pwm_channel_4 = 100;
 
 #endif
 
-				//reviso donde estaba la ultima vez
-				if (param_struct.last_function_in_flash == 0xFF)	//memoria borrada
-				{
-					last_function = FUNCTION_DMX;
-					last_program = 1;
-					last_program_deep = 1;
-					last_channel = 1;
+            //reviso donde estaba la ultima vez
+            if (param_struct.last_function_in_flash == 0xFF)	//memoria borrada
+            {
+                last_function = FUNCTION_DMX;
+                last_program = 1;
+                last_program_deep = 1;
+                last_channel = 1;
 
 #ifdef RGB_FOR_CHANNELS
-					fixed_data[0] = 0;
-					fixed_data[1] = 0;
+                fixed_data[0] = 0;
+                fixed_data[1] = 0;
 #endif
 
-				}
-				else
-				{
+            }
+            else
+            {
 #ifdef RGB_FOR_PROGRAMS
-					last_function = param_struct.last_function_in_flash;
-					last_program = param_struct.last_program_in_flash;
-					last_channel = param_struct.last_channel_in_flash;
-					last_program_deep = param_struct.last_program_deep_in_flash;
+                last_function = param_struct.last_function_in_flash;
+                last_program = param_struct.last_program_in_flash;
+                last_channel = param_struct.last_channel_in_flash;
+                last_program_deep = param_struct.last_program_deep_in_flash;
 #endif
 
 #ifdef RGB_FOR_CHANNELS
-					last_function = param_struct.last_function_in_flash;
-					last_program = param_struct.last_program_in_flash;
-					last_channel = param_struct.last_channel_in_flash;
-					last_program_deep = param_struct.last_program_deep_in_flash;
+                last_function = param_struct.last_function_in_flash;
+                last_program = param_struct.last_program_in_flash;
+                last_channel = param_struct.last_channel_in_flash;
+                last_program_deep = param_struct.last_program_deep_in_flash;
 
-					fixed_data[0] = param_struct.pwm_channel_1;
-					fixed_data[1] = param_struct.pwm_channel_2;
+                fixed_data[0] = param_struct.pwm_channel_1;
+                fixed_data[1] = param_struct.pwm_channel_2;
 #endif
 
 
-				}
+            }
 
-				if (last_function == FUNCTION_DMX)
-				{
-					FromChannelToDs(last_channel);		//muestro el ultimo canal DMX seleccionado
-					DMX_channel_selected = last_channel;
-					DMX_Ena();
-					main_state = MAIN_DMX_NORMAL;
-					timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
-				}
-				else
-				{
-					DMX_Disa();
+            if (last_function == FUNCTION_DMX)
+            {
+                FromChannelToDs(last_channel);		//muestro el ultimo canal DMX seleccionado
+                DMX_channel_selected = last_channel;
+                DMX_Ena();
+                main_state = MAIN_DMX_NORMAL;
+                timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
+            }
+            else
+            {
+                DMX_Disa();
 #ifdef RGB_FOR_PROGRAMS
-					ds1_number = DISPLAY_PROG;
-					ds2_number = last_program;
-					ds3_number = last_program_deep;
-					main_state = MAIN_MAN_PX_NORMAL;
+                ds1_number = DISPLAY_PROG;
+                ds2_number = last_program;
+                ds3_number = last_program_deep;
+                main_state = MAIN_MAN_PX_NORMAL;
 #endif
 #ifdef RGB_FOR_CHANNELS
-					ds1_number = DISPLAY_C;
-					ds2_number = DISPLAY_H;
-					ds3_number = last_program;
-					main_state = MAIN_MAN_PX_NORMAL;
+                ds1_number = DISPLAY_C;
+                ds2_number = DISPLAY_H;
+                ds3_number = last_program;
+                main_state = MAIN_MAN_PX_NORMAL;
 #endif
-				}
-				break;
+            }
+            break;
 
-			case MAIN_DMX_CHECK_CHANNEL:
-				//apago todos los canales antes de empezar
-				RED_PWM (0);
-				GREEN_PWM (0);
-				BLUE_PWM (0);
-				WHITE_PWM (0);
+        case MAIN_DMX_CHECK_CHANNEL:
+            //apago todos los canales antes de empezar
+            RED_PWM (0);
+            GREEN_PWM (0);
+            BLUE_PWM (0);
+            WHITE_PWM (0);
 
-				FromChannelToDs(last_channel);		//muestro el ultimo canal DMX seleccionado
-				timer_standby = TIMER_STANDBY_TIMEOUT;
-				main_state++;
-				break;
+            FromChannelToDs(last_channel);		//muestro el ultimo canal DMX seleccionado
+            timer_standby = TIMER_STANDBY_TIMEOUT;
+            main_state++;
+            break;
 
-			case MAIN_DMX_CHECK_CHANNEL_B:
-				//espero que se libere el switch teniendo en cuenta que puedo venir de MANUAL
-				if (CheckS1() == S_NO)
-				{
-					timer_standby = TIMER_STANDBY_TIMEOUT;
-					main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
-				}
-				break;
+        case MAIN_DMX_CHECK_CHANNEL_B:
+            //espero que se libere el switch teniendo en cuenta que puedo venir de MANUAL
+            if (CheckS1() == S_NO)
+            {
+                timer_standby = TIMER_STANDBY_TIMEOUT;
+                main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
+            }
+            break;
 
-			case MAIN_DMX_CHECK_CHANNEL_SELECTED:
-				if (CheckS1() > S_NO)
-					main_state = MAIN_DMX_CHECK_CHANNEL_S1;
+        case MAIN_DMX_CHECK_CHANNEL_SELECTED:
+            if (CheckS1() > S_NO)
+                main_state = MAIN_DMX_CHECK_CHANNEL_S1;
 
-				if (CheckS2() > S_NO)
-					main_state = MAIN_DMX_CHECK_CHANNEL_S2;
+            if (CheckS2() > S_NO)
+                main_state = MAIN_DMX_CHECK_CHANNEL_S2;
 
-				if (!timer_standby)
-					main_state = MAIN_DMX_SAVE_CONF;
+            if (!timer_standby)
+                main_state = MAIN_DMX_SAVE_CONF;
 
-				break;
+            break;
 
-			case MAIN_DMX_CHECK_CHANNEL_S1:
-				//espero que se libere el switch o poner S_HALF y luego forzar 0
-				if (CheckS1() == S_NO)
-				{
-					//corro una posicion o empiezo blinking
-					//segun donde este puede ser que tenga que ir a programas si
-					//se daja aretado mas tiempo
-					if (display_blinking & 0x07)
-					{
-						//muevo el display en blinking
-						if (display_blinking & DISPLAY_DS3)
-							display_blinking = DISPLAY_DS1;
-						else
-							display_blinking <<= 1;
-					}
-					else	//no estaba en blinking, lo actico para DS1
-					{
-						display_blinking = DISPLAY_DS1;
-					}
-					main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
-				}
+        case MAIN_DMX_CHECK_CHANNEL_S1:
+            //espero que se libere el switch o poner S_HALF y luego forzar 0
+            if (CheckS1() == S_NO)
+            {
+                //corro una posicion o empiezo blinking
+                //segun donde este puede ser que tenga que ir a programas si
+                //se daja aretado mas tiempo
+                if (display_blinking & 0x07)
+                {
+                    //muevo el display en blinking
+                    if (display_blinking & DISPLAY_DS3)
+                        display_blinking = DISPLAY_DS1;
+                    else
+                        display_blinking <<= 1;
+                }
+                else	//no estaba en blinking, lo actico para DS1
+                {
+                    display_blinking = DISPLAY_DS1;
+                }
+                main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
+            }
 
-				//me fijo si tengo que cambiar a MANUAL
-				if (CheckS1() >= S_HALF)
-				{
-					main_state = MAIN_MAN_PX_CHECK;
-				}
+            //me fijo si tengo que cambiar a MANUAL
+            if (CheckS1() >= S_HALF)
+            {
+                main_state = MAIN_MAN_PX_CHECK;
+            }
 
-				timer_standby = TIMER_STANDBY_TIMEOUT;
-				break;
+            timer_standby = TIMER_STANDBY_TIMEOUT;
+            break;
 
-			case MAIN_DMX_CHECK_CHANNEL_S2:
-				//espero que se libere el switch o poner S_HALF y luego forzar 0
-				if (CheckS2() == S_NO)
-				{
-					//sino hay blinking no doy bola
-					//segun donde esta blinking sumo 0-5 o 0-9
-					if (display_blinking & 0x07)
-					{
-						switch (display_blinking)	//el canal dmx lo formo despues de guardar
-						{
-							case DISPLAY_DS1:	//desde 0 a 5
-								if (ds1_number == DISPLAY_ZERO)
-									ds1_number = 1;
-								else if (ds1_number < 5)
-									ds1_number++;
-								else
-									ds1_number = DISPLAY_ZERO;
-								break;
+        case MAIN_DMX_CHECK_CHANNEL_S2:
+            //espero que se libere el switch o poner S_HALF y luego forzar 0
+            if (CheckS2() == S_NO)
+            {
+                //sino hay blinking no doy bola
+                //segun donde esta blinking sumo 0-5 o 0-9
+                if (display_blinking & 0x07)
+                {
+                    switch (display_blinking)	//el canal dmx lo formo despues de guardar
+                    {
+                    case DISPLAY_DS1:	//desde 0 a 5
+                        if (ds1_number == DISPLAY_ZERO)
+                            ds1_number = 1;
+                        else if (ds1_number < 5)
+                            ds1_number++;
+                        else
+                            ds1_number = DISPLAY_ZERO;
+                        break;
 
-							case DISPLAY_DS2:
-								if (ds2_number == DISPLAY_ZERO)
-									ds2_number = 1;
-								else if (ds2_number < 9)
-									ds2_number++;
-								else
-									ds2_number = DISPLAY_ZERO;
-								break;
+                    case DISPLAY_DS2:
+                        if (ds2_number == DISPLAY_ZERO)
+                            ds2_number = 1;
+                        else if (ds2_number < 9)
+                            ds2_number++;
+                        else
+                            ds2_number = DISPLAY_ZERO;
+                        break;
 
-							case DISPLAY_DS3:
-								if (ds3_number == DISPLAY_ZERO)
-									ds3_number = 1;
-								else if (ds3_number < 9)
-									ds3_number++;
-								else
-									ds3_number = DISPLAY_ZERO;
-								break;
-						}
-						last_channel = FromDsToChannel();
-					}
+                    case DISPLAY_DS3:
+                        if (ds3_number == DISPLAY_ZERO)
+                            ds3_number = 1;
+                        else if (ds3_number < 9)
+                            ds3_number++;
+                        else
+                            ds3_number = DISPLAY_ZERO;
+                        break;
+                    }
+                    last_channel = FromDsToChannel();
+                }
 
-					main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
-				}
-				timer_standby = TIMER_STANDBY_TIMEOUT;
-				break;
+                main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
+            }
+            timer_standby = TIMER_STANDBY_TIMEOUT;
+            break;
 
-			case MAIN_DMX_SAVE_CONF:
-				display_blinking = 0;
-				//se cambio el canal, hago el update
-				if ((last_channel == 0) || (last_channel > 511))		//no puede ser canal 0 ni mas de 511
-					last_channel = 1;
+        case MAIN_DMX_SAVE_CONF:
+            display_blinking = 0;
+            //se cambio el canal, hago el update
+            if ((last_channel == 0) || (last_channel > 511))		//no puede ser canal 0 ni mas de 511
+                last_channel = 1;
 
-				DMX_channel_selected = last_channel;
-				DMX_Disa();
+            DMX_channel_selected = last_channel;
+            DMX_Disa();
 #ifdef RGB_FOR_PROGRAMS
-				//hago update de memoria y grabo
-				param_struct.last_channel_in_flash = last_channel;
-				param_struct.last_function_in_flash = FUNCTION_DMX;
-				param_struct.last_program_in_flash = last_program;
-				param_struct.last_program_deep_in_flash = last_program_deep;
-				WriteConfigurations ();
+            //hago update de memoria y grabo
+            param_struct.last_channel_in_flash = last_channel;
+            param_struct.last_function_in_flash = FUNCTION_DMX;
+            param_struct.last_program_in_flash = last_program;
+            param_struct.last_program_deep_in_flash = last_program_deep;
+            WriteConfigurations ();
 #endif
 
 #ifdef RGB_FOR_CHANNELS
-				//hago update de memoria y grabo
-				param_struct.last_channel_in_flash = last_channel;
-				param_struct.last_function_in_flash = FUNCTION_DMX;
-				param_struct.last_program_in_flash = last_program;
-				param_struct.last_program_deep_in_flash = last_program_deep;
+            //hago update de memoria y grabo
+            param_struct.last_channel_in_flash = last_channel;
+            param_struct.last_function_in_flash = FUNCTION_DMX;
+            param_struct.last_program_in_flash = last_program;
+            param_struct.last_program_deep_in_flash = last_program_deep;
 
-				param_struct.pwm_channel_1 = fixed_data[0];
-				param_struct.pwm_channel_2 = fixed_data[1];
-				WriteConfigurations ();
+            param_struct.pwm_channel_1 = fixed_data[0];
+            param_struct.pwm_channel_2 = fixed_data[1];
+            WriteConfigurations ();
 #endif
-				main_state++;
-				timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
-				DMX_Ena();
-				break;
+            main_state++;
+            timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
+            DMX_Ena();
+            break;
 
-			case MAIN_DMX_NORMAL:
-				 if (Packet_Detected_Flag)
-				 {
-					 //llego un paquete DMX
-					 Packet_Detected_Flag = 0;
-					 //en data tengo la info
-					 //FromChannelToDs(data[0]);	//no muestro el valor actual, solo el canal 1
+        case MAIN_DMX_NORMAL:
+            if (Packet_Detected_Flag)
+            {
+                //llego un paquete DMX
+                Packet_Detected_Flag = 0;
+                //en data tengo la info
+                //FromChannelToDs(data[0]);	//no muestro el valor actual, solo el canal 1
 
 
-					 /*
-					 //filtro en tramas DMX
-					 RED_PWM (MAFilter(data[0], vd0));	//RED
-					 GREEN_PWM (MAFilter(data[1], vd1));	//GREEN
-					 BLUE_PWM (MAFilter(data[2], vd2));	//BLUE
-					 WHITE_PWM (MAFilter(data[3], vd3));	//WHITE
-					 */
+                /*
+                //filtro en tramas DMX
+                RED_PWM (MAFilter32_Byte(data[0], vd0));	//RED
+                GREEN_PWM (MAFilter32_Byte(data[1], vd1));	//GREEN
+                BLUE_PWM (MAFilter32_Byte(data[2], vd2));	//BLUE
+                WHITE_PWM (MAFilter32_Byte(data[3], vd3));	//WHITE
+                */
 
-					 /*
-					 RED_PWM (data[0]);	//RED	la salida ahora la hace el filtro
-					 GREEN_PWM (data[1]);	//GREEN
-					 BLUE_PWM (data[2]);	//BLUE
-					 WHITE_PWM (data[3]);	//WHITE
-					 */
-				 }
+                /*
+                  RED_PWM (data[0]);	//RED	la salida ahora la hace el filtro
+                  GREEN_PWM (data[1]);	//GREEN
+                  BLUE_PWM (data[2]);	//BLUE
+                  WHITE_PWM (data[3]);	//WHITE
+                */
+            }
 
 #ifdef WITH_GRANDMASTER
-				 if (!filter_timer)
-				 {
-					 filter_timer = 5;
+            if (!filter_timer)
+            {
+                filter_timer = 5;
 
-					 //data[9] = MAFilter(data[4], vd4);
-					 //data[9] = data[4];
+                //data[9] = MAFilter32_Byte(data[4], vd4);
+                //data[9] = data[4];
 
-					 acc = data[0] * data[4];
-					 data[5] = acc >> 8;
-					 acc = data[1] * data[4];
-					 data[6] = acc >> 8;
-					 acc = data[2] * data[4];
-					 data[7] = acc >> 8;
-					 acc = data[3] * data[4];
-					 data[8] = acc >> 8;
+                acc = data[0] * data[4];
+                data[5] = acc >> 8;
+                acc = data[1] * data[4];
+                data[6] = acc >> 8;
+                acc = data[2] * data[4];
+                data[7] = acc >> 8;
+                acc = data[3] * data[4];
+                data[8] = acc >> 8;
 
-					 RED_PWM (MAFilter(data[5], vd0));	//RED
-					 GREEN_PWM (MAFilter(data[6], vd1));	//GREEN
-					 BLUE_PWM (MAFilter(data[7], vd2));	//BLUE
-					 WHITE_PWM (MAFilter(data[8], vd3));	//WHITE
+                RED_PWM (MAFilter32_Byte(data[5], vd0));	//RED
+                GREEN_PWM (MAFilter32_Byte(data[6], vd1));	//GREEN
+                BLUE_PWM (MAFilter32_Byte(data[7], vd2));	//BLUE
+                WHITE_PWM (MAFilter32_Byte(data[8], vd3));	//WHITE
 
-					 //RED_PWM (MAFilter(data[0], vd0));	//RED
-					 //GREEN_PWM (MAFilter(data[1], vd1));	//GREEN
-					 //BLUE_PWM (MAFilter(data[2], vd2));	//BLUE
-					 //WHITE_PWM (MAFilter(data[3], vd3));	//WHITE
-				 }
+                //RED_PWM (MAFilter32_Byte(data[0], vd0));	//RED
+                //GREEN_PWM (MAFilter32_Byte(data[1], vd1));	//GREEN
+                //BLUE_PWM (MAFilter32_Byte(data[2], vd2));	//BLUE
+                //WHITE_PWM (MAFilter32_Byte(data[3], vd3));	//WHITE
+            }
 #else
-				 if (!filter_timer)
-				 {
-					 //filter_timer = 100;		//para prueba con placa mosfet comparad con controldor chino
-					 filter_timer = 5;
-					 //TODO: integrar a canales
-					 RED_PWM (MAFilter(data[0], vd0));	//RED
-					 GREEN_PWM (MAFilter(data[1], vd1));	//GREEN
-					 BLUE_PWM (MAFilter(data[2], vd2));	//BLUE
-					 WHITE_PWM (MAFilter(data[3], vd3));	//WHITE
-				 }
+            if (!filter_timer)
+            {
+                //filter_timer = 100;		//para prueba con placa mosfet comparad con controldor chino
+                filter_timer = 5;
+                //TODO: integrar a canales
+                RED_PWM (MAFilter32_Byte(data[0], vd0));	//RED
+                GREEN_PWM (MAFilter32_Byte(data[1], vd1));	//GREEN
+                BLUE_PWM (MAFilter32_Byte(data[2], vd2));	//BLUE
+                WHITE_PWM (MAFilter32_Byte(data[3], vd3));	//WHITE
+            }
 #endif
 
-				 if ((CheckS1() > S_NO) || (CheckS2() > S_NO))
-				 {
-					 //si se toco un boton una vez solo prendo display
-					 if (!timer_dmx_display_show)
-					 {
-						 timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
-					 }
-					 else if (timer_dmx_display_show < (DMX_DISPLAY_SHOW_TIMEOUT - 1000))	//1 seg despues
-					 {
-						 main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
-						 timer_standby = TIMER_STANDBY_TIMEOUT;
-					 }
-					 FromChannelToDs(last_channel);
-				 }
+            if ((CheckS1() > S_NO) || (CheckS2() > S_NO))
+            {
+                //si se toco un boton una vez solo prendo display
+                if (!timer_dmx_display_show)
+                {
+                    timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
+                }
+                else if (timer_dmx_display_show < (DMX_DISPLAY_SHOW_TIMEOUT - 1000))	//1 seg despues
+                {
+                    main_state = MAIN_DMX_CHECK_CHANNEL_SELECTED;
+                    timer_standby = TIMER_STANDBY_TIMEOUT;
+                }
+                FromChannelToDs(last_channel);
+            }
 
-				 if (!timer_dmx_display_show)
-				 {
-					 //debo apagar display
-					 ds1_number = DISPLAY_NONE;
-					 ds2_number = DISPLAY_NONE;
-					 ds3_number = DISPLAY_NONE;
-				 }
-				 break;
+            if (!timer_dmx_display_show)
+            {
+                //debo apagar display
+                ds1_number = DISPLAY_NONE;
+                ds2_number = DISPLAY_NONE;
+                ds3_number = DISPLAY_NONE;
+            }
+            break;
 
-			case MAIN_MAN_PX_CHECK:
+        case MAIN_MAN_PX_CHECK:
 #ifdef RGB_FOR_PROGRAMS
-				//vengo de la otra funcion, reviso cual fue el ultimo programa
-				DMX_Disa();
-				ds1_number = DISPLAY_PROG;
-				ds2_number = last_program;		//program no puede ser menor a 1
-				ds3_number = last_program_deep;	//program_deep no puede ser menor a 1
+            //vengo de la otra funcion, reviso cual fue el ultimo programa
+            DMX_Disa();
+            ds1_number = DISPLAY_PROG;
+            ds2_number = last_program;		//program no puede ser menor a 1
+            ds3_number = last_program_deep;	//program_deep no puede ser menor a 1
 
-				display_blinking = DISPLAY_DS2;
+            display_blinking = DISPLAY_DS2;
 
-				main_state++;
+            main_state++;
 #endif
 #ifdef RGB_FOR_CHANNELS
-				//vengo de la otra funcion, reviso cual fue el ultimo canal usado
-				DMX_Disa();
-				LED_OFF;
-				ds1_number = DISPLAY_C;
-				ds2_number = DISPLAY_H;		//program no puede ser menor a 1
-				ds3_number = last_program;	//program_deep no puede ser menor a 1
+            //vengo de la otra funcion, reviso cual fue el ultimo canal usado
+            DMX_Disa();
+            LED_OFF;
+            ds1_number = DISPLAY_C;
+            ds2_number = DISPLAY_H;		//program no puede ser menor a 1
+            ds3_number = last_program;	//program_deep no puede ser menor a 1
 
-				display_blinking = 0;
-				need_to_save = 1;			//tengo que grabar, vengo de DMX
-				main_state++;
-				//limpio variables last y PWM
-				Func_For_Cat(0, 0);
+            display_blinking = 0;
+            need_to_save = 1;			//tengo que grabar, vengo de DMX
+            main_state++;
+            //limpio variables last y PWM
+            Func_For_Cat(0, 0);
 #endif
-				break;
+            break;
 
-			case MAIN_MAN_PX_CHECK_B:
-				//verifico que se libere el boton, porque puede ser que venga de la otra funcion
-				if (CheckS1() == S_NO)
-				{
-					main_state = MAIN_MAN_PX_CHECK_DEEP;
-					timer_standby = TIMER_STANDBY_TIMEOUT;
-				}
-				break;
+        case MAIN_MAN_PX_CHECK_B:
+            //verifico que se libere el boton, porque puede ser que venga de la otra funcion
+            if (CheckS1() == S_NO)
+            {
+                main_state = MAIN_MAN_PX_CHECK_DEEP;
+                timer_standby = TIMER_STANDBY_TIMEOUT;
+            }
+            break;
 
-			case MAIN_MAN_PX_CHECK_DEEP:
+        case MAIN_MAN_PX_CHECK_DEEP:
 #ifdef RGB_FOR_PROGRAMS
-				if (CheckS1() > S_NO)
-					main_state = MAIN_MAN_PX_CHECK_S1;
+            if (CheckS1() > S_NO)
+                main_state = MAIN_MAN_PX_CHECK_S1;
 
-				if (CheckS2() > S_NO)
-					main_state = MAIN_MAN_PX_CHECK_S2;
+            if (CheckS2() > S_NO)
+                main_state = MAIN_MAN_PX_CHECK_S2;
 
-				if (!timer_standby)
-					main_state = MAIN_MAN_PX_SAVE_CONF;
+            if (!timer_standby)
+                main_state = MAIN_MAN_PX_SAVE_CONF;
 
-				//si estan cambiando el programa igual muestro como va quedando
-				Func_PX_Ds(ds1_number, ds2_number, ds3_number);
+            //si estan cambiando el programa igual muestro como va quedando
+            Func_PX_Ds(ds1_number, ds2_number, ds3_number);
 #endif
 
 #ifdef RGB_FOR_CHANNELS
-				if (CheckS1() > S_NO)
-					main_state = MAIN_MAN_PX_CHECK_S1;
+            if (CheckS1() > S_NO)
+                main_state = MAIN_MAN_PX_CHECK_S1;
 
-				if (CheckS2() > S_NO)
-				{
-					main_state = MAIN_MAN_PX_CHECK_S2;
-					need_to_save = 1;
-				}
+            if (CheckS2() > S_NO)
+            {
+                main_state = MAIN_MAN_PX_CHECK_S2;
+                need_to_save = 1;
+            }
 
-				//salgo de dos maneras
-				//grabando o no grabando
-				if (!timer_standby)
-				{
-					if (need_to_save)
-					{
-						main_state = MAIN_MAN_PX_SAVE_CONF;
-						need_to_save = 0;
-					}
-					else
-						main_state = MAIN_MAN_PX_NORMAL;
-				}
+            //salgo de dos maneras
+            //grabando o no grabando
+            if (!timer_standby)
+            {
+                if (need_to_save)
+                {
+                    main_state = MAIN_MAN_PX_SAVE_CONF;
+                    need_to_save = 0;
+                }
+                else
+                    main_state = MAIN_MAN_PX_NORMAL;
+            }
 
 
-				//si estan cambiando el programa igual muestro como va quedando
-				Func_For_Cat(fixed_data[0], fixed_data[1]);
+            //si estan cambiando el programa igual muestro como va quedando
+            Func_For_Cat(fixed_data[0], fixed_data[1]);
 #endif
-				break;
+            break;
 
-			case MAIN_MAN_PX_CHECK_S1:
+        case MAIN_MAN_PX_CHECK_S1:
 #ifdef RGB_FOR_PROGRAMS
-				//espero que se libere el switch  o poner S_HALF y luego forzar 0
-				if (CheckS1() == S_NO)
-				{
-					//corro una posicion o empiezo blinking
-					//segun donde este puede ser que tenga que ir a programas
-					if (display_blinking & 0x07)
-					{
-						//muevo el display en blinking
-						if (display_blinking & DISPLAY_DS3)
-						{
-							display_blinking = DISPLAY_DS2;
-						}
-						else
-							display_blinking <<= 1;
-					}
-					else	//no estaba en blinking, lo activo para DS1
-					{
-						display_blinking = DISPLAY_DS2;
-					}
-					main_state = MAIN_MAN_PX_CHECK_DEEP;
-				}
+            //espero que se libere el switch  o poner S_HALF y luego forzar 0
+            if (CheckS1() == S_NO)
+            {
+                //corro una posicion o empiezo blinking
+                //segun donde este puede ser que tenga que ir a programas
+                if (display_blinking & 0x07)
+                {
+                    //muevo el display en blinking
+                    if (display_blinking & DISPLAY_DS3)
+                    {
+                        display_blinking = DISPLAY_DS2;
+                    }
+                    else
+                        display_blinking <<= 1;
+                }
+                else	//no estaba en blinking, lo activo para DS1
+                {
+                    display_blinking = DISPLAY_DS2;
+                }
+                main_state = MAIN_MAN_PX_CHECK_DEEP;
+            }
 
-				//me fijo si tengo que cambiar a DMX
-				if (CheckS1() >= S_HALF)
-				{
-					//salto a dmx
-					DMX_Ena();
-					main_state = MAIN_DMX_CHECK_CHANNEL;
-					display_blinking = DISPLAY_DS1;
-				}
+            //me fijo si tengo que cambiar a DMX
+            if (CheckS1() >= S_HALF)
+            {
+                //salto a dmx
+                DMX_Ena();
+                main_state = MAIN_DMX_CHECK_CHANNEL;
+                display_blinking = DISPLAY_DS1;
+            }
 
-				timer_standby = TIMER_STANDBY_TIMEOUT;
+            timer_standby = TIMER_STANDBY_TIMEOUT;
 #endif
 #ifdef RGB_FOR_CHANNELS
-				//espero que se libere el switch  o poner S_HALF y luego forzar 0
-				if (CheckS1() == S_NO)
-				{
-					//TODO: integrar a canales
-					if (last_program < RGB_FOR_CHANNELS_NUM)
-						last_program++;
-					else
-						last_program = 1;
+            //espero que se libere el switch  o poner S_HALF y luego forzar 0
+            if (CheckS1() == S_NO)
+            {
+                //TODO: integrar a canales
+                if (last_program < RGB_FOR_CHANNELS_NUM)
+                    last_program++;
+                else
+                    last_program = 1;
 
-					ds1_number = DISPLAY_C;
-					ds2_number = DISPLAY_H;
-					ds3_number = last_program;
-					main_state = MAIN_MAN_PX_CHECK_DEEP;
-				}
+                ds1_number = DISPLAY_C;
+                ds2_number = DISPLAY_H;
+                ds3_number = last_program;
+                main_state = MAIN_MAN_PX_CHECK_DEEP;
+            }
 
-				//me fijo si tengo que cambiar a DMX
-				if (CheckS1() >= S_HALF)
-				{
-					//salto a dmx
-					DMX_Ena();
-					main_state = MAIN_DMX_CHECK_CHANNEL;
-					display_blinking = DISPLAY_DS1;
-				}
+            //me fijo si tengo que cambiar a DMX
+            if (CheckS1() >= S_HALF)
+            {
+                //salto a dmx
+                DMX_Ena();
+                main_state = MAIN_DMX_CHECK_CHANNEL;
+                display_blinking = DISPLAY_DS1;
+            }
 
-				timer_standby = TIMER_STANDBY_TIMEOUT_REDUCED;
-				//timer_standby = TIMER_STANDBY_TIMEOUT;
+            timer_standby = TIMER_STANDBY_TIMEOUT_REDUCED;
+            //timer_standby = TIMER_STANDBY_TIMEOUT;
 #endif
-				break;
+            break;
 
-			case MAIN_MAN_PX_CHECK_S2:
+        case MAIN_MAN_PX_CHECK_S2:
 #ifdef RGB_FOR_PROGRAMS
-				//espero que se libere el switch  o poner S_HALF y luego forzar 0
-				if (CheckS2() == S_NO)
-				{
-					//sino hay blinking no doy bola
-					//muevo DS3 desde 1 a 9 cambiando profundidad
-					if (display_blinking & DISPLAY_DS3)
-					{
-						if (ds3_number < 9)
-							ds3_number++;
-						else
-							ds3_number = 1;		//no puede ser 0
+            //espero que se libere el switch  o poner S_HALF y luego forzar 0
+            if (CheckS2() == S_NO)
+            {
+                //sino hay blinking no doy bola
+                //muevo DS3 desde 1 a 9 cambiando profundidad
+                if (display_blinking & DISPLAY_DS3)
+                {
+                    if (ds3_number < 9)
+                        ds3_number++;
+                    else
+                        ds3_number = 1;		//no puede ser 0
 
-						last_program_deep = ds3_number;
-					}
+                    last_program_deep = ds3_number;
+                }
 
-					//muevo DS2 desde 1 a 9 cambiando programas
-					if (display_blinking & DISPLAY_DS2)
-					{
-						if (ds2_number < 9)
-							ds2_number++;
-						else
-							ds2_number = 1;
+                //muevo DS2 desde 1 a 9 cambiando programas
+                if (display_blinking & DISPLAY_DS2)
+                {
+                    if (ds2_number < 9)
+                        ds2_number++;
+                    else
+                        ds2_number = 1;
 
-						last_program = ds2_number;
-					}
-					main_state = MAIN_MAN_PX_CHECK_DEEP;
-				}
-				timer_standby = TIMER_STANDBY_TIMEOUT;
+                    last_program = ds2_number;
+                }
+                main_state = MAIN_MAN_PX_CHECK_DEEP;
+            }
+            timer_standby = TIMER_STANDBY_TIMEOUT;
 #endif
 #ifdef RGB_FOR_CHANNELS
-				switch (last_program)
-				{
-					case 1:
-						if (!timer_for_channels_switch)
-						{
-							if (fixed_data[0] < 100)
-								fixed_data[0]++;
-							else
-								fixed_data[0] = 0;
+            switch (last_program)
+            {
+            case 1:
+                if (!timer_for_channels_switch)
+                {
+                    if (fixed_data[0] < 100)
+                        fixed_data[0]++;
+                    else
+                        fixed_data[0] = 0;
 
-							FromChannelToDs(fixed_data[0]);
-							timer_for_channels_switch = TT_CHANNELS_SW;
-						}
-						break;
+                    FromChannelToDs(fixed_data[0]);
+                    timer_for_channels_switch = TT_CHANNELS_SW;
+                }
+                break;
 
-					case 2:
-						if (!timer_for_channels_switch)
-						{
-							if (fixed_data[1] < 100)
-								fixed_data[1]++;
-							else
-								fixed_data[1] = 0;
+            case 2:
+                if (!timer_for_channels_switch)
+                {
+                    if (fixed_data[1] < 100)
+                        fixed_data[1]++;
+                    else
+                        fixed_data[1] = 0;
 
-							FromChannelToDs(fixed_data[1]);
-							timer_for_channels_switch = TT_CHANNELS_SW;
-						}
-						break;
+                    FromChannelToDs(fixed_data[1]);
+                    timer_for_channels_switch = TT_CHANNELS_SW;
+                }
+                break;
 
-					default:
-						last_program = 1;
-						break;
-				}
-				main_state = MAIN_MAN_PX_CHECK_DEEP;
+            default:
+                last_program = 1;
+                break;
+            }
+            main_state = MAIN_MAN_PX_CHECK_DEEP;
 
-				timer_standby = TIMER_STANDBY_TIMEOUT;
+            timer_standby = TIMER_STANDBY_TIMEOUT;
 #endif
-				break;
+            break;
 
-			case MAIN_MAN_PX_SAVE_CONF:
-				DMX_Disa();
-				display_blinking = 0;
+        case MAIN_MAN_PX_SAVE_CONF:
+            DMX_Disa();
+            display_blinking = 0;
 #ifdef RGB_FOR_PROGRAMS
-				//hago update de memoria y grabo
-				param_struct.last_channel_in_flash = last_channel;
-				param_struct.last_function_in_flash = FUNCTION_MAN;
-				param_struct.last_program_in_flash = last_program;
-				param_struct.last_program_deep_in_flash = last_program_deep;
-				WriteConfigurations ();
+            //hago update de memoria y grabo
+            param_struct.last_channel_in_flash = last_channel;
+            param_struct.last_function_in_flash = FUNCTION_MAN;
+            param_struct.last_program_in_flash = last_program;
+            param_struct.last_program_deep_in_flash = last_program_deep;
+            WriteConfigurations ();
 #endif
 
 #ifdef RGB_FOR_CHANNELS
-				param_struct.last_channel_in_flash = last_channel;
-				param_struct.last_function_in_flash = FUNCTION_CAT;
-				param_struct.last_program_in_flash = last_program;
-				param_struct.last_program_deep_in_flash = last_program_deep;
+            param_struct.last_channel_in_flash = last_channel;
+            param_struct.last_function_in_flash = FUNCTION_CAT;
+            param_struct.last_program_in_flash = last_program;
+            param_struct.last_program_deep_in_flash = last_program_deep;
 
-				param_struct.pwm_channel_1 = fixed_data[0];
-				param_struct.pwm_channel_2 = fixed_data[1];
-				WriteConfigurations ();
+            param_struct.pwm_channel_1 = fixed_data[0];
+            param_struct.pwm_channel_2 = fixed_data[1];
+            WriteConfigurations ();
 #endif
 
-				main_state++;
-				break;
+            main_state++;
+            break;
 
-			case MAIN_MAN_PX_NORMAL:
+        case MAIN_MAN_PX_NORMAL:
 #ifdef RGB_FOR_PROGRAMS
-				Func_PX(last_program, last_program_deep);
+            Func_PX(last_program, last_program_deep);
 
-				if ((CheckS1() > S_NO) || (CheckS2() > S_NO))
-				{
-					main_state = MAIN_MAN_PX_CHECK_DEEP;
-					timer_standby = TIMER_STANDBY_TIMEOUT;
-				}
+            if ((CheckS1() > S_NO) || (CheckS2() > S_NO))
+            {
+                main_state = MAIN_MAN_PX_CHECK_DEEP;
+                timer_standby = TIMER_STANDBY_TIMEOUT;
+            }
 #endif
 #ifdef RGB_FOR_CHANNELS
-				Func_For_Cat(fixed_data[0], fixed_data[1]);
+            Func_For_Cat(fixed_data[0], fixed_data[1]);
 
-				if ((CheckS1() > S_NO) || (CheckS2() > S_NO))
-				{
-					main_state = MAIN_MAN_PX_CHECK_DEEP;
-					timer_standby = TIMER_STANDBY_TIMEOUT;
-				}
+            if ((CheckS1() > S_NO) || (CheckS2() > S_NO))
+            {
+                main_state = MAIN_MAN_PX_CHECK_DEEP;
+                timer_standby = TIMER_STANDBY_TIMEOUT;
+            }
 
-				if (!timer_for_channels_display)
-				{
-					switch (show_channels_state)
-					{
-						case SHOW_CHANNELS:
-							ds1_number = DISPLAY_C;
-							ds2_number = DISPLAY_H;		//program no puede ser menor a 1
-							ds3_number = last_program;	//program_deep no puede ser menor a 1
-							show_channels_state = SHOW_NUMBERS;
-							break;
+            if (!timer_for_channels_display)
+            {
+                switch (show_channels_state)
+                {
+                case SHOW_CHANNELS:
+                    ds1_number = DISPLAY_C;
+                    ds2_number = DISPLAY_H;		//program no puede ser menor a 1
+                    ds3_number = last_program;	//program_deep no puede ser menor a 1
+                    show_channels_state = SHOW_NUMBERS;
+                    break;
 
-						case SHOW_NUMBERS:
-							switch (last_program)
-							{
-								case 1:
-									FromChannelToDs(fixed_data[0]);
-									break;
+                case SHOW_NUMBERS:
+                    switch (last_program)
+                    {
+                    case 1:
+                        FromChannelToDs(fixed_data[0]);
+                        break;
 
-								case 2:
-									FromChannelToDs(fixed_data[1]);
-									break;
+                    case 2:
+                        FromChannelToDs(fixed_data[1]);
+                        break;
 
-								default:
-									last_program = 1;
-									break;
-							}
-							show_channels_state = SHOW_CHANNELS;
-							break;
+                    default:
+                        last_program = 1;
+                        break;
+                    }
+                    show_channels_state = SHOW_CHANNELS;
+                    break;
 
-						default:
-							show_channels_state = SHOW_NUMBERS;
-							break;
-					}
-					timer_for_channels_display = TT_CHANNELS_DISPLAY;
-				}
+                default:
+                    show_channels_state = SHOW_NUMBERS;
+                    break;
+                }
+                timer_for_channels_display = TT_CHANNELS_DISPLAY;
+            }
 #endif
 
-				break;
+            break;
 
-			case MAIN_TEMP_OVERLOAD:
-				//corto completo y dejo prendiendo y apagando el led cada 100ms
-				//excepto FAN que lo pongo a maximo
-				CTRL_FAN_ON;
-				//DMX_Disa();	//por ahora no corto el DMX
-				RED_PWM (0);
-				GREEN_PWM (0);
-				BLUE_PWM (0);
-				WHITE_PWM (0);
+        case MAIN_TEMP_OVERLOAD:
+            //corto completo y dejo prendiendo y apagando el led cada 100ms
+            //excepto FAN que lo pongo a maximo
+            CTRL_FAN_ON;
+            //DMX_Disa();	//por ahora no corto el DMX
+            RED_PWM (0);
+            GREEN_PWM (0);
+            BLUE_PWM (0);
+            WHITE_PWM (0);
 
-				//con ds1_number, ds2_number y ds3_number tengo la info de display
-				ds1_number = DISPLAY_NONE;
-				ds2_number = DISPLAY_NONE;
-				ds3_number = DISPLAY_E;
+            //con ds1_number, ds2_number y ds3_number tengo la info de display
+            ds1_number = DISPLAY_NONE;
+            ds2_number = DISPLAY_NONE;
+            ds3_number = DISPLAY_E;
 
-				main_state++;
-				break;
+            main_state++;
+            break;
 
-			case MAIN_TEMP_OVERLOAD_B:
-				if (!timer_standby)
-				{
-					timer_standby = 100;
-					if (LED)
-						LED_OFF;
-					else
-						LED_ON;
-				}
+        case MAIN_TEMP_OVERLOAD_B:
+            if (!timer_standby)
+            {
+                timer_standby = 100;
+                if (LED)
+                    LED_OFF;
+                else
+                    LED_ON;
+            }
 
-				if (current_temp > TEMP_DISCONECT)
-				{
-					ds2_number = DISPLAY_E;
-				}
+            if (current_temp > TEMP_DISCONECT)
+            {
+                ds2_number = DISPLAY_E;
+            }
 
-				if (current_temp < TEMP_IN_50)
-				{
-					if (last_function == FUNCTION_DMX)
-					{
-						FromChannelToDs(last_channel);		//muestro el ultimo canal DMX seleccionado
-						DMX_channel_selected = last_channel;
-						main_state = MAIN_DMX_NORMAL;
-						timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
-					}
-					else
-					{
+            if (current_temp < TEMP_IN_50)
+            {
+                if (last_function == FUNCTION_DMX)
+                {
+                    FromChannelToDs(last_channel);		//muestro el ultimo canal DMX seleccionado
+                    DMX_channel_selected = last_channel;
+                    main_state = MAIN_DMX_NORMAL;
+                    timer_dmx_display_show = DMX_DISPLAY_SHOW_TIMEOUT;
+                }
+                else
+                {
 #ifdef RGB_FOR_CHANNELS
-						ds1_number = DISPLAY_C;
-						ds2_number = DISPLAY_H;
-						ds3_number = last_program;
-						ResetLastValues();
+                    ds1_number = DISPLAY_C;
+                    ds2_number = DISPLAY_H;
+                    ds3_number = last_program;
+                    ResetLastValues();
 #else
-						ds1_number = DISPLAY_PROG;
-						ds2_number = last_program;
-						ds3_number = last_program_deep;
+                    ds1_number = DISPLAY_PROG;
+                    ds2_number = last_program;
+                    ds3_number = last_program_deep;
 #endif
-						main_state = MAIN_MAN_PX_NORMAL;
-					}
-				}
-				break;
+                    main_state = MAIN_MAN_PX_NORMAL;
+                }
+            }
+            break;
 
-			default:
-				main_state = MAIN_INIT;
-				break;
+        default:
+            main_state = MAIN_INIT;
+            break;
 
-		}
+        }
 
-		UpdateDisplay ();
-		UpdateSwitches ();
+        UpdateDisplay ();
+        UpdateSwitches ();
 
-		//sensado de temperatura
-		if (!take_sample)
-		{
-			take_sample = 10;	//tomo muestra cada 10ms
-			current_temp = Get_Temp();
+        //sensado de temperatura
+        if (!take_sample)
+        {
+            take_sample = 10;	//tomo muestra cada 10ms
+            current_temp = Get_Temp();
 
-			if ((main_state != MAIN_TEMP_OVERLOAD) && (main_state != MAIN_TEMP_OVERLOAD_B))
-			{
-				if (current_temp > TEMP_IN_65)
-				{
-					//corto los leds	ver si habia DMX cortar y poner nuevamente
-					main_state = MAIN_TEMP_OVERLOAD;
-				}
-				else if (current_temp > TEMP_IN_35)
-					CTRL_FAN_ON;
-				else if (current_temp < TEMP_IN_30)
-					CTRL_FAN_OFF;
-			}
-		}
-	}	//termina while(1)
+            if ((main_state != MAIN_TEMP_OVERLOAD) && (main_state != MAIN_TEMP_OVERLOAD_B))
+            {
+                if (current_temp > TEMP_IN_65)
+                {
+                    //corto los leds	ver si habia DMX cortar y poner nuevamente
+                    main_state = MAIN_TEMP_OVERLOAD;
+                }
+                else if (current_temp > TEMP_IN_35)
+                    CTRL_FAN_ON;
+                else if (current_temp < TEMP_IN_30)
+                    CTRL_FAN_OFF;
+            }
+        }
+    }	//termina while(1)
 
-	return 0;
+    return 0;
 }
 
 
 //--- End of Main ---//
 unsigned short Get_Temp (void)
 {
-	unsigned short total_ma;
-	unsigned char j;
-
-	//Kernel mejorado ver 2
-	//si el vector es de 0 a 7 (+1) sumo todas las posiciones entre 1 y 8, acomodo el nuevo vector entre 0 y 7
-	total_ma = 0;
-	vtemp[LARGO_FILTRO] = ReadADC1_SameSampleTime (CH_IN_TEMP);
-    for (j = 0; j < (LARGO_FILTRO); j++)
-    {
-    	total_ma += vtemp[j + 1];
-    	vtemp[j] = vtemp[j + 1];
-    }
-
-    return total_ma >> DIVISOR;
+    return MAFilter16 (ReadADC1_SameSampleTime (CH_IN_TEMP), vtemp);
 }
-
-unsigned char MAFilter (unsigned char new_sample, unsigned char * vsample)
-{
-	unsigned short total_ma;
-	unsigned char j;
-
-	//Kernel mejorado ver 2
-	//si el vector es de 0 a 7 (+1) sumo todas las posiciones entre 1 y 8, acomodo el nuevo vector entre 0 y 7
-	total_ma = 0;
-	*(vsample + LARGO_F) = new_sample;
-
-    for (j = 0; j < (LARGO_F); j++)
-    {
-    	total_ma += *(vsample + j + 1);
-    	*(vsample + j) = *(vsample + j + 1);
-    }
-
-    return total_ma >> DIVISOR_F;
-}
-
-unsigned short MAFilter16 (unsigned char new_sample, unsigned char * vsample)
-{
-	unsigned short total_ma;
-	unsigned char j;
-
-	//Kernel mejorado ver 2
-	//si el vector es de 0 a 7 (+1) sumo todas las posiciones entre 1 y 8, acomodo el nuevo vector entre 0 y 7
-	total_ma = 0;
-	*(vsample + LARGO_F) = new_sample;
-
-    for (j = 0; j < (LARGO_F); j++)
-    {
-    	total_ma += *(vsample + j + 1);
-    	*(vsample + j) = *(vsample + j + 1);
-    }
-
-    return total_ma >> DIVISOR_F;
-}
-
-
-
-
-
 
 
 void DMX_Ena(void)

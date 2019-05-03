@@ -71,19 +71,11 @@ typedef enum {
 
 
 // Exported Module Functions ------------------------------------------
-// void ConvertPositionToDisplay (unsigned short);
-// void UpdateDisplaySM (void);
-// void UpdateDisplayResetSM (void);
-// void UpdateDisplayStartSM (void);
-// void VectorToDisplayStr (char *);
-// void ShowNumbers (unsigned char);
+void UpdateDisplay (void);
 unsigned short FromDsToChannel (void);
 void FromChannelToDs (unsigned short);
 unsigned char TranslateNumber (unsigned char);
 void SendSegment (unsigned char, unsigned char);
-
-// void ShowNumbersAgain (void);
-// unsigned char DisplayIsFree (void);
 
 
 #endif    /* _DISPLAY_7SEG_H_ */
