@@ -26,16 +26,20 @@
 
 // #define WITH_GRANDMASTER	//tiene un quinto canal que funciona como grandmaster de los 4 primeros
 
-// #define RGB_FOR_CHANNELS    //solo 2ch con dimmer fijo
-#define RGB_FOR_PROGRAMS    //elije programas y mueve los 4ch en secuencias predefinidas  
+#define RGB_FOR_CHANNELS    //4, 2, 1ch con intensidad fija
+// #define RGB_FOR_PROGRAMS    //elije programas y mueve los 4ch en secuencias predefinidas  
 
 //------ Configuration for Firmware-Channels -----
 #ifdef RGB_FOR_CHANNELS
-#define RGB_FOR_CHANNELS_NUM	2
+#define RGB_FOR_CHANNELS_NUM	1
+// #define RGB_FOR_CHANNELS_NUM	2
 //#define RGB_FOR_CHANNELS_NUM	4
-#if (RGB_FOR_CHANNELS_NUM == 2)		//SYNCHRO
-//#define RGB_FOR_CHANNELS_CH1_CH3_SYNC
-//#define RGB_FOR_CHANNELS_CH2_CH4_SYNC
+#if (RGB_FOR_CHANNELS_NUM == 1)		//SYNCHRO para 1 CHANNEL
+#define RGB_FOR_CHANNELS_CHRED_CHGREEN_SYNC
+#endif
+#if (RGB_FOR_CHANNELS_NUM == 2)		//SYNCHRO en 2 CHANNELS
+#define RGB_FOR_CHANNELS_CHRED_CHBLUE_SYNC
+#define RGB_FOR_CHANNELS_CHGREEN_CHWHITE_SYNC
 #endif
 #endif
 

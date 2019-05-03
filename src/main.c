@@ -176,9 +176,6 @@ int main(void)
     BLUE_PWM (0);
     WHITE_PWM (0);
 
-    //inicio cuestiones particulares
-    //iniciar variables de usao del programa segun funcion de memoria
-
     //ADC configuration.
     AdcConfig();
 
@@ -529,24 +526,6 @@ int main(void)
             {
                 //llego un paquete DMX
                 Packet_Detected_Flag = 0;
-                //en data tengo la info
-                //FromChannelToDs(data[0]);	//no muestro el valor actual, solo el canal 1
-
-
-                /*
-                //filtro en tramas DMX
-                RED_PWM (MAFilter32_Byte(data[0], vd0));	//RED
-                GREEN_PWM (MAFilter32_Byte(data[1], vd1));	//GREEN
-                BLUE_PWM (MAFilter32_Byte(data[2], vd2));	//BLUE
-                WHITE_PWM (MAFilter32_Byte(data[3], vd3));	//WHITE
-                */
-
-                /*
-                  RED_PWM (data[0]);	//RED	la salida ahora la hace el filtro
-                  GREEN_PWM (data[1]);	//GREEN
-                  BLUE_PWM (data[2]);	//BLUE
-                  WHITE_PWM (data[3]);	//WHITE
-                */
             }
 
 #ifdef WITH_GRANDMASTER
@@ -570,22 +549,26 @@ int main(void)
                 GREEN_PWM (MAFilter32_Byte(data[6], vd1));	//GREEN
                 BLUE_PWM (MAFilter32_Byte(data[7], vd2));	//BLUE
                 WHITE_PWM (MAFilter32_Byte(data[8], vd3));	//WHITE
-
-                //RED_PWM (MAFilter32_Byte(data[0], vd0));	//RED
-                //GREEN_PWM (MAFilter32_Byte(data[1], vd1));	//GREEN
-                //BLUE_PWM (MAFilter32_Byte(data[2], vd2));	//BLUE
-                //WHITE_PWM (MAFilter32_Byte(data[3], vd3));	//WHITE
             }
 #else
             if (!filter_timer)
             {
-                //filter_timer = 100;		//para prueba con placa mosfet comparad con controldor chino
+#ifdef RGB_FOR_CHANNELS_CHRED_CHGREEN_SYNC
+                unsigned char aux = 0;
+                
                 filter_timer = 5;
-                //TODO: integrar a canales
+                
+                aux = MAFilter32_Byte(data[0], vd0);
+                RED_PWM (aux);                      //RED
+                GREEN_PWM (aux);                    //GREEN
+#else
+                filter_timer = 5;
+                
                 RED_PWM (MAFilter32_Byte(data[0], vd0));	//RED
                 GREEN_PWM (MAFilter32_Byte(data[1], vd1));	//GREEN
                 BLUE_PWM (MAFilter32_Byte(data[2], vd2));	//BLUE
                 WHITE_PWM (MAFilter32_Byte(data[3], vd3));	//WHITE
+#endif
             }
 #endif
 
@@ -636,8 +619,14 @@ int main(void)
             display_blinking = 0;
             need_to_save = 1;			//tengo que grabar, vengo de DMX
             main_state++;
+
             //limpio variables last y PWM
-            Func_For_Cat(0, 0);
+            ResetLastValues();
+            RED_PWM(0);
+            GREEN_PWM(0);
+            BLUE_PWM(0);
+            WHITE_PWM(0);
+            // Func_For_Cat(0, 0);    //esto no limpia la rimera vez antes de un reset
 #endif
             break;
 

@@ -66,28 +66,37 @@ const unsigned char v_cycles_strobe[] = {  9,  9,   8,   8,   7,   7,   6,   6, 
 /* Functions -------------------------------------------------------------------*/
 
 #ifdef RGB_FOR_CHANNELS
+//envia el valor de dimmer elegido a los canales
+//usa por default los valores de channelR y channelG
+//que son CH4 y CH3 en hard, y ch1 ch2 en display
 void Func_For_Cat(unsigned char r, unsigned char g)
 {
 	unsigned short acc;
 
+        //Para Channel 1, sale por RED o RED + synchro
 	if (last_r != r)
 	{
 		acc = r * 255;
 		acc = acc / 100;
-#ifdef RGB_FOR_CHANNELS_CH1_CH3_SYNC
+                
+#if defined RGB_FOR_CHANNELS_CHRED_CHBLUE_SYNC
 		RED_PWM(acc);
 		BLUE_PWM(acc);
-#else
+#elif defined RGB_FOR_CHANNELS_CHRED_CHGREEN_SYNC
 		RED_PWM(acc);
+                GREEN_PWM(acc);
+#else
+                RED_PWM(acc);
 #endif
 		last_r = r;
 	}
 
+        //Para Channel 2, sale por GREEN o GREEN + synchro
 	if (last_g != g)
 	{
 		acc = g * 255;
 		acc = acc / 100;
-#ifdef RGB_FOR_CHANNELS_CH2_CH4_SYNC
+#ifdef RGB_FOR_CHANNELS_CHGREEN_CHWHITE_SYNC
 		GREEN_PWM(acc);
 		WHITE_PWM(acc);
 #else
@@ -101,50 +110,12 @@ void Func_For_Cat(unsigned char r, unsigned char g)
 
 void ResetLastValues(void)
 {
-	last_r = 0;
-	last_g = 0;
-	last_b = 0;
-	last_w = 0;
+    last_r = 0;
+    last_g = 0;
+    last_b = 0;
+    last_w = 0;
 }
 
-/*
-void Func_For_Cat(unsigned char r, unsigned char g, unsigned char b, unsigned char w)
-{
-	unsigned short acc;
-
-	if (last_r != r)
-	{
-		acc = r * 255;
-		acc = acc / 100;
-		RED_PWM(acc);
-		last_r = r;
-	}
-
-	if (last_g != g)
-	{
-		acc = g * 255;
-		acc = acc / 100;
-		GREEN_PWM(acc);
-		last_g = g;
-	}
-
-	if (last_b != b)
-	{
-		acc = b * 255;
-		acc = acc / 100;
-		BLUE_PWM(acc);
-		last_b = b;
-	}
-
-	if (last_w != w)
-	{
-		acc = w * 255;
-		acc = acc / 100;
-		WHITE_PWM(acc);
-		last_w = w;
-	}
-}
-*/
 #endif
 
 //funcion general la llamo para determinar las funciones individuales, la llamo con los 3 DS
